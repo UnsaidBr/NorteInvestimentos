@@ -1,0 +1,6 @@
+{
+  "name": "NorteInvest",
+  "description": "Portal brasileiro de inteligência de mercado e educação financeira com cotações da B3 atualizadas a cada 60 segundos, simulações patrimoniais e sínteses de IA em estilo private banking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+:root {
+  /* ==========================================================================
+     NORTEINVEST PRIVATE BANKING / LUXURY DESIGN SYSTEM
+     Centralize todas as cores e tokens aqui para mudar a paleta em um só lugar!
+     ========================================================================== */
+  
+  /* Fundo & Superfícies (Carvão Quente & Nogueira Escura) */
+  --bg-app: #0b0a09;
+  --surface-1: #141210;
+  --surface-2: #1c1916;
+  --surface-3: #24201c;
+
+  /* Bordas Douradas Sutis & Divisores */
+  --border-subtle: rgba(212, 175, 106, 0.12);
+  --border-hover: rgba(212, 175, 106, 0.28);
+  --border-gold: rgba(212, 175, 106, 0.45);
+  --border-active: rgba(212, 175, 106, 0.6);
+
+  /* Cor de Marca: Dourado Champagne & Brilhos */
+  --brand-gold: #d4af6a;
+  --brand-gold-light: #f0d9a8;
+  --brand-gold-dark: #b58d46;
+  --brand-gold-glow: rgba(212, 175, 106, 0.18);
+  --brand-gold-subtle: rgba(212, 175, 106, 0.08);
+
+  /* Alias para compatibilidade */
+  --color-brand: var(--brand-gold);
+  --color-brand-hover: var(--brand-gold-light);
+  --color-brand-glow: var(--brand-gold-glow);
+  --color-brand-subtle: var(--brand-gold-subtle);
+
+  /* Variações de Mercado (Utilizadas APENAS para oscilações de preço) */
+  --color-gain: #3ddc97;
+  --color-gain-subtle: rgba(61, 220, 151, 0.12);
+  --color-loss: #ff5c6c;
+  --color-loss-subtle: rgba(255, 92, 108, 0.12);
+
+  /* Tipografia: Marfim Nobre, Taupe Quente e Sépia Mudo */
+  --text-primary: #f5efe6;
+  --text-secondary: #a39a8c;
+  --text-muted: #6e675c;
+
+  /* Geometria refinada */
+  --radius-card: 14px;
+}
+
+@theme {
+  --color-bg-app: var(--bg-app);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-gain: var(--color-gain);
+  --color-loss: var(--color-loss);
+  --color-brand: var(--brand-gold);
+  --color-brand-hover: var(--brand-gold-light);
+  --color-brand-subtle: var(--brand-gold-subtle);
+
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'Space Grotesk', 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+  }
+
+  body {
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: 'Fraunces', Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+
+  /* Aplicação global de números tabulares para preços não pularem */
+  .tabular-nums,
+  [data-tabular-nums="true"],
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-family: 'Space Grotesk', 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom luxury scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 106, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 106, 0.4);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes continuousMarquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: continuousMarquee 45s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Luxury private banking card with hairline gold border */
+.luxury-card {
+  background-color: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.luxury-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 8px 32px -4px rgba(212, 175, 106, 0.08);
+}
+
+/* Luxury Button with subtle gold gradient & glow */
+.btn-gold {
+  background: linear-gradient(135deg, #d4af6a 0%, #f0d9a8 100%);
+  color: #0b0a09;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(212, 175, 106, 0.2);
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, #dfbc77 0%, #fae6b8 100%);
+  box-shadow: 0 6px 24px rgba(212, 175, 106, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-gold-outline {
+  background: rgba(212, 175, 106, 0.05);
+  border: 1px solid rgba(212, 175, 106, 0.3);
+  color: #f0d9a8;
+  font-weight: 500;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.btn-gold-outline:hover {
+  background: rgba(212, 175, 106, 0.12);
+  border-color: rgba(212, 175, 106, 0.6);
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(212, 175, 106, 0.15);
+}
+
+/* Hide scrollbar for ticker */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
