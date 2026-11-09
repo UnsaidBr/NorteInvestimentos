@@ -67,7 +67,7 @@ export const TermsOfServicePage: React.FC = () => {
               <span>3. Fontes de Dados e Atrasos Indicativos</span>
             </h2>
             <p>
-              As cotações e taxas são agregadas a partir de provedores externos públicos (como brapi.dev, Banco Central do Brasil, AwesomeAPI e CoinGecko). Apesar dos melhores esforços para manter a precisão dos dados exibidos, o portal não garante a ausência de atrasos técnicos, falhas de conectividade ou erros nas APIs de terceiros.
+              As cotações e taxas são agregadas a partir de provedores externos públicos (como brapi.dev, Banco Central do Brasil SGS e PTAX Olinda, e CoinGecko). Apesar dos melhores esforços para manter a precisão dos dados exibidos, o portal não garante a ausência de atrasos técnicos, falhas de conectividade ou erros nas APIs de terceiros.
             </p>
           </section>
 

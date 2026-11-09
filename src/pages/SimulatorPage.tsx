@@ -27,7 +27,11 @@ export const SimulatorPage: React.FC = () => {
         <div className="flex items-center gap-2 px-3.5 py-2 rounded-[10px] bg-[#141210] border border-[#d4af6a]/20 text-xs font-mono">
           <Landmark className="w-4 h-4 text-[#d4af6a]" />
           <span className="text-[#c2b9ac]">Selic Meta:</span>
-          <strong className="text-[#f5efe6] font-bold">{marketState.macro.selic.rateAnnual.toFixed(2)}% a.a.</strong>
+          <strong className="text-[#f5efe6] font-bold">
+            {marketState.macro.selic.rateAnnual !== null
+              ? `${marketState.macro.selic.rateAnnual.toFixed(2)}% a.a.`
+              : (marketState.macro.selic.statusText || 'Indisponível')}
+          </strong>
         </div>
       </PageHeader>
 

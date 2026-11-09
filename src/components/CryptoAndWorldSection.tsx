@@ -20,17 +20,17 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
   const [convertAmount, setConvertAmount] = useState<number>(100);
   const [selectedAsset, setSelectedAsset] = useState<string>('USD');
 
-  const getRate = () => {
-    if (selectedAsset === 'USD') return currencies.find((c) => c.code === 'USD')?.bid || 5.48;
-    if (selectedAsset === 'EUR') return currencies.find((c) => c.code === 'EUR')?.bid || 6.01;
-    if (selectedAsset === 'XAU') return currencies.find((c) => c.code === 'XAU')?.bid || 462.8;
-    if (selectedAsset === 'BTC') return cryptos.find((c) => c.symbol === 'BTC')?.priceBrl || 362450;
-    if (selectedAsset === 'ETH') return cryptos.find((c) => c.symbol === 'ETH')?.priceBrl || 15420;
-    if (selectedAsset === 'SOL') return cryptos.find((c) => c.symbol === 'SOL')?.priceBrl || 895.4;
+  const getRate = (): number | null => {
+    if (selectedAsset === 'USD') return currencies.find((c) => c.code === 'USD')?.bid ?? null;
+    if (selectedAsset === 'EUR') return currencies.find((c) => c.code === 'EUR')?.bid ?? null;
+    if (selectedAsset === 'BTC') return cryptos.find((c) => c.symbol === 'BTC')?.priceBrl ?? null;
+    if (selectedAsset === 'ETH') return cryptos.find((c) => c.symbol === 'ETH')?.priceBrl ?? null;
+    if (selectedAsset === 'SOL') return cryptos.find((c) => c.symbol === 'SOL')?.priceBrl ?? null;
     return 1;
   };
 
-  const convertedBrl = convertAmount * getRate();
+  const rate = getRate();
+  const convertedBrl = rate !== null ? convertAmount * rate : null;
 
   return (
     <section id="cripto-mundo" className="py-16 sm:py-24 bg-[#0b0a09]">
@@ -63,7 +63,7 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {cryptos.map((crypto) => {
-              const isUp = crypto.change24h >= 0;
+              const isUp = (crypto.change24h ?? 0) >= 0;
               return (
                 <div
                   key={crypto.id}
@@ -84,16 +84,18 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
                       </div>
                     </div>
 
-                    <span
-                      className={`inline-flex items-center gap-0.5 font-mono tabular-nums text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        isUp
-                          ? 'text-[#3ddc97] bg-[#3ddc97]/10 border border-[#3ddc97]/20'
-                          : 'text-[#ff5c6c] bg-[#ff5c6c]/10 border border-[#ff5c6c]/20'
-                      }`}
-                    >
-                      {isUp ? <TrendingUp className="w-3 h-3 text-[#3ddc97]" /> : <TrendingDown className="w-3 h-3 text-[#ff5c6c]" />}
-                      {formatPercent(crypto.change24h, false)}
-                    </span>
+                    {crypto.change24h !== null && crypto.change24h !== undefined && (
+                      <span
+                        className={`inline-flex items-center gap-0.5 font-mono tabular-nums text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          isUp
+                            ? 'text-[#3ddc97] bg-[#3ddc97]/10 border border-[#3ddc97]/20'
+                            : 'text-[#ff5c6c] bg-[#ff5c6c]/10 border border-[#ff5c6c]/20'
+                        }`}
+                      >
+                        {isUp ? <TrendingUp className="w-3 h-3 text-[#3ddc97]" /> : <TrendingDown className="w-3 h-3 text-[#ff5c6c]" />}
+                        {formatPercent(crypto.change24h, false)}
+                      </span>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-[#d4af6a]/10">
@@ -101,7 +103,9 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
                       Preço em Reais
                     </span>
                     <span className="font-mono tabular-nums font-bold text-xl text-[#f5efe6] mt-0.5 block">
-                      {formatBRL(crypto.priceBrl, crypto.priceBrl < 1000 ? 2 : 0)}
+                      {crypto.priceBrl !== null && crypto.priceBrl !== undefined
+                        ? formatBRL(crypto.priceBrl, crypto.priceBrl < 1000 ? 2 : 0)
+                        : (crypto.statusText || 'Indisponível no momento')}
                     </span>
                   </div>
                 </div>
@@ -119,7 +123,7 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {currencies.map((curr) => {
-              const isUp = curr.pctChange >= 0;
+              const isUp = (curr.pctChange ?? 0) >= 0;
               return (
                 <div
                   key={curr.code}
@@ -131,27 +135,24 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
                         <span className="font-mono tabular-nums font-bold text-base text-[#f5efe6] group-hover:text-[#f0d9a8] transition-colors">
                           {curr.code} / BRL
                         </span>
-                        {curr.code === 'XAU' && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1c1916] text-[#d4af6a] border border-[#d4af6a]/20">
-                            Metal Precioso
-                          </span>
-                        )}
                       </div>
                       <span className="text-xs text-[#c2b9ac] block mt-0.5">
                         {curr.name}
                       </span>
                     </div>
 
-                    <span
-                      className={`inline-flex items-center gap-0.5 font-mono tabular-nums text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        isUp
-                          ? 'text-[#3ddc97] bg-[#3ddc97]/10 border border-[#3ddc97]/20'
-                          : 'text-[#ff5c6c] bg-[#ff5c6c]/10 border border-[#ff5c6c]/20'
-                      }`}
-                    >
-                      {isUp ? <TrendingUp className="w-3 h-3 text-[#3ddc97]" /> : <TrendingDown className="w-3 h-3 text-[#ff5c6c]" />}
-                      {formatPercent(curr.pctChange, false)}
-                    </span>
+                    {curr.pctChange !== null && curr.pctChange !== undefined && (
+                      <span
+                        className={`inline-flex items-center gap-0.5 font-mono tabular-nums text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          isUp
+                            ? 'text-[#3ddc97] bg-[#3ddc97]/10 border border-[#3ddc97]/20'
+                            : 'text-[#ff5c6c] bg-[#ff5c6c]/10 border border-[#ff5c6c]/20'
+                        }`}
+                      >
+                        {isUp ? <TrendingUp className="w-3 h-3 text-[#3ddc97]" /> : <TrendingDown className="w-3 h-3 text-[#ff5c6c]" />}
+                        {formatPercent(curr.pctChange, false)}
+                      </span>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-[#d4af6a]/10 flex items-baseline justify-between">
@@ -160,12 +161,14 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
                         Compra (Bid)
                       </span>
                       <span className="font-mono tabular-nums font-bold text-xl text-[#f5efe6] mt-0.5 block">
-                        {formatBRL(curr.bid, curr.code === 'XAU' ? 2 : 3)}
+                        {curr.bid !== null && curr.bid !== undefined
+                          ? formatBRL(curr.bid, 4)
+                          : (curr.statusText || 'Indisponível no momento')}
                       </span>
                     </div>
 
                     <div className="text-right text-[11px] font-mono text-[#8c8273]">
-                      <span>Máx: {formatBRL(curr.high || curr.bid, 2)}</span>
+                      <span>{curr.high ? `Máx: ${formatBRL(curr.high, 2)}` : (curr.statusText || '—')}</span>
                     </div>
                   </div>
                 </div>
@@ -215,9 +218,8 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
                     onChange={(e) => setSelectedAsset(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-[#141210] border border-[#d4af6a]/20 focus:border-[#d4af6a] rounded-[8px] text-xs font-mono font-bold text-[#f0d9a8] focus:outline-none cursor-pointer"
                   >
-                    <option value="USD">Dólar Comercial (USD)</option>
-                    <option value="EUR">Euro Comercial (EUR)</option>
-                    <option value="XAU">Ouro Fino (Gramas XAU)</option>
+                    <option value="USD">Dólar PTAX (USD)</option>
+                    <option value="EUR">Euro PTAX (EUR)</option>
                     <option value="BTC">Bitcoin (BTC)</option>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="SOL">Solana (SOL)</option>
@@ -232,11 +234,11 @@ export const CryptoAndWorldSection: React.FC<CryptoAndWorldSectionProps> = ({
                     Valor Convertido em Reais
                   </span>
                   <span className="font-mono tabular-nums text-2xl font-bold text-[#f0d9a8]">
-                    {formatBRL(convertedBrl, 2)}
+                    {convertedBrl !== null ? formatBRL(convertedBrl, 2) : 'Indisponível no momento'}
                   </span>
                 </div>
                 <div className="text-right text-[11px] font-mono text-[#c2b9ac]">
-                  <span>1 {selectedAsset} = {formatBRL(getRate(), 2)}</span>
+                  <span>1 {selectedAsset} = {rate !== null ? formatBRL(rate, 2) : 'Indisponível'}</span>
                 </div>
               </div>
             </div>

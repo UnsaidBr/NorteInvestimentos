@@ -7,6 +7,7 @@ import {
   ArrowUp,
   Instagram,
   Youtube,
+  ShieldCheck,
 } from 'lucide-react';
 
 // Custom sleek TikTok SVG icon
@@ -47,7 +48,7 @@ export const Footer: React.FC = () => {
                   Conteúdo Educacional
                 </span>
                 <span className="text-[#f5efe6] font-serif text-sm font-semibold tracking-tight">
-                  Aviso Legal de Mercado
+                  Aviso Legal de Mercado & Resolução CVM nº 19
                 </span>
               </div>
               <p className="text-[#f5efe6]/90 leading-relaxed text-xs sm:text-sm font-normal">
@@ -61,22 +62,21 @@ export const Footer: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Main Footer Grid */}
+      {/* 2. Main Footer Grid: 5 Colunas Perfeitamente Estruturadas */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-6">
           
-          {/* Brand Column */}
-          <div className="space-y-4 lg:col-span-2">
+          {/* Coluna 1: Marca & Identidade */}
+          <div className="space-y-4">
             <Logo size="md" />
 
-            <p className="text-xs text-[#c2b9ac] leading-relaxed max-w-sm font-normal">
-              Portal independente de inteligência de mercado e educação financeira. Descomplicando a B3, taxas de juros e investimentos para o público brasileiro com clareza.
+            <p className="text-xs text-[#c2b9ac] leading-relaxed font-normal">
+              Portal independente de inteligência de mercado, valuation e alfabetização financeira na B3.
             </p>
 
-            {/* Social Networks: Instagram, TikTok and YouTube only */}
-            <div className="pt-2">
+            <div className="pt-1">
               <span className="text-[10px] font-mono uppercase tracking-wider text-[#8c8273] block mb-2 font-semibold">
-                Siga o {APP_NAME}
+                Redes Sociais
               </span>
               <div className="flex items-center gap-2">
                 {socialLinks.map((s, idx) => (
@@ -93,81 +93,142 @@ export const Footer: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            <div className="pt-2 text-[11px] font-mono text-[#8c8273]">
+              <div className="flex items-center gap-1.5 text-[#3ddc97]">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Dados auditados e sem anúncios</span>
+              </div>
+            </div>
           </div>
 
-          {/* Col 2: Navigation */}
+          {/* Coluna 2: Mercado & Ativos */}
           <div>
-            <h4 className="text-xs font-mono font-bold text-[#f5efe6] uppercase tracking-wider mb-4">
-              Navegação
+            <h4 className="text-xs font-mono font-bold text-[#f5efe6] uppercase tracking-wider mb-3.5 pb-1 border-b border-[#d4af6a]/10">
+              Mercado & Ativos
             </h4>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-2 text-xs">
               <li>
-                <Link to="/" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
-                  Início
+                <Link to="/mercado" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Ações da B3
                 </Link>
               </li>
               <li>
-                <Link to="/mercado" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
-                  Mercado B3 & Ações
+                <Link to="/fiis" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Fundos Imobiliários (FIIs)
+                </Link>
+              </li>
+              <li>
+                <Link to="/radar" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Rastreador de Valuation
                 </Link>
               </li>
               <li>
                 <Link to="/cripto" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
-                  Criptomoedas & Câmbio
+                  Criptomoedas & Câmbio PTAX
+                </Link>
+              </li>
+              <li>
+                <Link to="/dividendos" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Calendário de Proventos
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Coluna 3: Ferramentas Analíticas */}
+          <div>
+            <h4 className="text-xs font-mono font-bold text-[#f5efe6] uppercase tracking-wider mb-3.5 pb-1 border-b border-[#d4af6a]/10">
+              Ferramentas
+            </h4>
+            <ul className="space-y-2 text-xs">
+              <li>
+                <Link to="/carteira" className="text-[#f0d9a8] hover:underline font-bold transition-colors">
+                  Minha Carteira (Proventos)
                 </Link>
               </li>
               <li>
                 <Link to="/simulador" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
-                  Simulador de Juros
+                  Simulador de Rendimento (CDI)
                 </Link>
               </li>
+              <li>
+                <Link to="/comparar" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Comparador de Ativos
+                </Link>
+              </li>
+              <li>
+                <Link to="/favoritos" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Meus Favoritos
+                </Link>
+              </li>
+              <li>
+                <Link to="/planos" className="text-[#f0d9a8] hover:underline font-bold transition-colors flex items-center gap-1">
+                  <span>Planos & Premium</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-[#d4af6a]/20 text-[#f0d9a8]">VIP</span>
+                </Link>
+              </li>
+              <li>
+                <Link to="/diagnostico" className="text-[#8c8273] hover:text-[#c2b9ac] transition-colors font-mono text-[11px]">
+                  Diagnóstico do Sistema
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Coluna 4: Educação & Conteúdo */}
+          <div>
+            <h4 className="text-xs font-mono font-bold text-[#f5efe6] uppercase tracking-wider mb-3.5 pb-1 border-b border-[#d4af6a]/10">
+              Educação
+            </h4>
+            <ul className="space-y-2 text-xs">
               <li>
                 <Link to="/aprender" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
                   Mini-Aulas para Iniciantes
                 </Link>
               </li>
               <li>
+                <Link to="/noticias" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Radar de Notícias RSS
+                </Link>
+              </li>
+              <li>
+                <Link to="/glossario" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Glossário Financeiro A-Z
+                </Link>
+              </li>
+              <li>
                 <Link to="/ia" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
-                  Como a IA Funciona
+                  Síntese de Mercado com IA
+                </Link>
+              </li>
+              <li>
+                <Link to="/metodologia" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Metodologia de Cálculo
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Fontes de Dados Reais */}
+          {/* Coluna 5: Institucional & Legal */}
           <div>
-            <h4 className="text-xs font-mono font-bold text-[#f5efe6] uppercase tracking-wider mb-4">
-              Fontes de Dados
+            <h4 className="text-xs font-mono font-bold text-[#f5efe6] uppercase tracking-wider mb-3.5 pb-1 border-b border-[#d4af6a]/10">
+              Institucional
             </h4>
-            <ul className="space-y-2.5 text-xs font-mono text-[#c2b9ac]">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#d4af6a]" />
-                <span>brapi.dev (Cotações B3)</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#d4af6a]" />
-                <span>Banco Central (SGS / Selic)</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#d4af6a]" />
-                <span>CoinGecko (Criptoativos)</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#d4af6a]" />
-                <span>AwesomeAPI (Câmbio USD/EUR)</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 4: Termos & Privacidade */}
-          <div>
-            <h4 className="text-xs font-mono font-bold text-[#f5efe6] uppercase tracking-wider mb-4">
-              Legal & Privacidade
-            </h4>
-            <ul className="space-y-2.5 text-xs mb-4">
+            <ul className="space-y-2 text-xs mb-4">
               <li>
-                <Link to="/privacidade" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
-                  Política de Privacidade (LGPD)
+                <Link to="/sobre" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Sobre a NorteInvest
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Perguntas Frequentes (FAQ)
+                </Link>
+              </li>
+              <li>
+                <Link to="/contato" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Fale Conosco / Contato
                 </Link>
               </li>
               <li>
@@ -175,11 +236,16 @@ export const Footer: React.FC = () => {
                   Termos de Uso
                 </Link>
               </li>
+              <li>
+                <Link to="/privacidade" className="text-[#c2b9ac] hover:text-[#f0d9a8] transition-colors">
+                  Privacidade (LGPD)
+                </Link>
+              </li>
             </ul>
 
             <button
               onClick={scrollToTop}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[8px] bg-[#141210] hover:bg-[#1c1916] text-[#f5efe6] border border-[#d4af6a]/20 hover:border-[#d4af6a]/40 transition-all cursor-pointer text-xs font-medium shadow-sm active:scale-95"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-[#141210] hover:bg-[#1c1916] text-[#f5efe6] border border-[#d4af6a]/20 hover:border-[#d4af6a]/40 transition-all cursor-pointer text-xs font-medium shadow-sm active:scale-95"
             >
               <ArrowUp className="w-3.5 h-3.5 text-[#d4af6a]" />
               <span>Voltar ao topo</span>
@@ -197,7 +263,7 @@ export const Footer: React.FC = () => {
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#141210] border border-[#d4af6a]/15">
             <span className="text-sm">🇧🇷</span>
             <span className="text-[#f5efe6] font-medium font-sans text-xs">
-              Feito no Brasil com foco no investidor brasileiro
+              Feito no Brasil para o investidor brasileiro
             </span>
           </div>
 

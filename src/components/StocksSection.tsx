@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { StockItem } from '../types/market';
-import { formatBRL, formatPercent, formatVolumeBRL, formatFullDateTimeBR } from '../utils/formatters';
+import { formatBRL, formatPercent, formatVolumeBRL, formatFullDateTimeBR, getFriendlyCompanyName } from '../utils/formatters';
 import {
   TrendingUp,
   TrendingDown,
@@ -13,7 +14,18 @@ import {
   AlertTriangle,
   Clock,
   Building2,
+  SlidersHorizontal,
+  LayoutGrid,
+  Star,
+  Scale,
 } from 'lucide-react';
+import { useFavorites } from '../hooks/useFavorites';
+import { ScreenerSection } from './ScreenerSection';
+import { MarketMapSection } from './MarketMapSection';
+
+// Constantes configuráveis de elegibilidade para rankings de Ações (Regra 4)
+export const MIN_STOCK_PRICE_RANKINGS = 1.0; // Preço mínimo R$ 1,00 (descarta penny stocks)
+export const MIN_VOLUME_RANKINGS = 500_000; // Volume financeiro diário mínimo configurável em R$
 
 interface StocksSectionProps {
   stocks: StockItem[];
@@ -24,7 +36,7 @@ interface StocksSectionProps {
   onSelectStockForAi: (stock: StockItem) => void;
 }
 
-type TabType = 'altas' | 'baixas' | 'negociadas' | 'acoes' | 'fiis' | 'todas';
+type TabType = 'altas' | 'baixas' | 'negociadas' | 'mapa' | 'screener' | 'acoes' | 'fiis' | 'todas';
 
 // Subtle metallic avatar for stocks
 function getStockAvatar(ticker: string) {
@@ -39,7 +51,8 @@ export const MiniSparkline: React.FC<{
   stock: StockItem;
   width?: number;
   height?: number;
-}> = ({ stock, width = 76, height = 28 }) => {
+  hideIfUnavailable?: boolean;
+}> = ({ stock, width = 76, height = 28, hideIfUnavailable = false }) => {
   const isUp = stock.changePercent >= 0;
   const strokeColor = isUp ? '#3ddc97' : '#ff5c6c';
   const gradId = `spark-${stock.ticker}`;
@@ -62,6 +75,7 @@ export const MiniSparkline: React.FC<{
   }, [hasRealHistory, stock.sparkline, width, height]);
 
   if (!hasRealHistory || points.length < 2) {
+    if (hideIfUnavailable) return null;
     return (
       <div
         className="flex items-center justify-center font-mono text-xs text-[#8c8273] select-none h-6 w-16 mx-auto"
@@ -120,8 +134,35 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
   onSelectStockForChart,
   onSelectStockForAi,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('altas');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') as TabType | null;
+
+  const validTabs: TabType[] = ['altas', 'baixas', 'negociadas', 'mapa', 'screener', 'acoes', 'fiis', 'todas'];
+  const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'altas';
+
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [searchTerm, setSearchTerm] = useState('');
+  const { isFavorite, toggleFavorite } = useFavorites();
+
+  // Sync state if URL query param changes
+  useEffect(() => {
+    if (urlTab && validTabs.includes(urlTab) && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]);
+
+  const handleTabChange = (tabId: TabType) => {
+    setActiveTab(tabId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tabId === 'altas') {
+        next.delete('tab');
+      } else {
+        next.set('tab', tabId);
+      }
+      return next;
+    }, { replace: true });
+  };
 
   const prevPricesRef = useRef<Map<string, number>>(new Map());
   const [flashMap, setFlashMap] = useState<Map<string, 'up' | 'down'>>(new Map());
@@ -161,13 +202,32 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
       );
     }
 
+    const isEligibleRankingStock = (s: StockItem) => {
+      // 1. Só ações (não ETF nem FII)
+      const isFiiOrEtf =
+        s.category === 'fii' ||
+        (s.sector?.toLowerCase() || '').includes('fii') ||
+        (s.sector?.toLowerCase() || '').includes('fundo') ||
+        (s.ticker.endsWith('11') && !['TAEE11', 'KLBN11', 'SAPR11', 'BPAC11', 'SANB11', 'ALUP11'].includes(s.ticker));
+      if (isFiiOrEtf) return false;
+
+      // 2. Preço mínimo R$ 1,00
+      if ((s.price || 0) < MIN_STOCK_PRICE_RANKINGS) return false;
+
+      // 3. Volume financeiro diário mínimo configurável
+      const vol = s.volume || s.avgVolume || 0;
+      if (vol > 0 && vol < MIN_VOLUME_RANKINGS) return false;
+
+      return true;
+    };
+
     switch (activeTab) {
       case 'altas':
-        return result.sort((a, b) => b.changePercent - a.changePercent);
+        return result.filter(isEligibleRankingStock).sort((a, b) => b.changePercent - a.changePercent);
       case 'baixas':
-        return result.sort((a, b) => a.changePercent - b.changePercent);
+        return result.filter(isEligibleRankingStock).sort((a, b) => a.changePercent - b.changePercent);
       case 'negociadas':
-        return result.sort((a, b) => b.volume - a.volume);
+        return result.filter(isEligibleRankingStock).sort((a, b) => b.volume - a.volume);
       case 'acoes':
         return result
           .filter((s) => s.category !== 'fii' && !s.ticker.endsWith('11'))
@@ -186,6 +246,8 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
     { id: 'altas', label: 'Maiores Altas', icon: <TrendingUp className="w-3.5 h-3.5 text-[#3ddc97]" /> },
     { id: 'baixas', label: 'Maiores Baixas', icon: <TrendingDown className="w-3.5 h-3.5 text-[#ff5c6c]" /> },
     { id: 'negociadas', label: 'Mais Negociadas', icon: <Flame className="w-3.5 h-3.5 text-[#d4af6a]" /> },
+    { id: 'mapa', label: 'Mapa do Mercado', icon: <LayoutGrid className="w-3.5 h-3.5 text-[#d4af6a]" /> },
+    { id: 'screener', label: 'Screener', icon: <SlidersHorizontal className="w-3.5 h-3.5 text-[#d4af6a]" /> },
     { id: 'acoes', label: 'Ações B3', icon: <Layers className="w-3.5 h-3.5 text-[#f0d9a8]" /> },
     { id: 'fiis', label: 'Fundos Imobiliários (FIIs)', icon: <Building2 className="w-3.5 h-3.5 text-[#d4af6a]" /> },
     { id: 'todas', label: 'Todos os Ativos', icon: <Layers className="w-3.5 h-3.5 text-[#c2b9ac]" /> },
@@ -222,24 +284,34 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
             </div>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-[#f5efe6] tracking-tight">
-              Ativos em Destaque
+              {activeTab === 'screener'
+                ? 'Screener de Ativos B3'
+                : activeTab === 'mapa'
+                ? 'Mapa do Mercado B3'
+                : 'Ativos em Destaque'}
             </h2>
             <p className="text-sm text-[#c2b9ac] mt-2 max-w-xl font-normal leading-relaxed">
-              Cotações da B3 atualizadas a cada 60 segundos com sparklines reais e análise de volume. Clique em qualquer ativo para abrir o gráfico ou consultar a síntese com IA.
+              {activeTab === 'screener'
+                ? 'Filtre e selecione ativos por múltiplos fundamentalistas, setores, volumes e faixas de preço. Ordene por qualquer coluna e personalize sua visualização.'
+                : activeTab === 'mapa'
+                ? 'Visualização em mapa de calor (treemap) do pregão agrupada por setor, proporcional ao valor de mercado e colorida pela variação diária.'
+                : 'Cotações da B3 atualizadas a cada 60 segundos com sparklines reais e análise de volume. Clique em qualquer ativo para abrir o gráfico ou consultar a síntese com IA.'}
             </p>
           </div>
 
-          {/* Search Input */}
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a39a8c]" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar ticker ou empresa (ex: PETR4, MXRF11)..."
-              className="w-full pl-10 pr-4 py-2.5 bg-[#141210] border border-[#d4af6a]/20 focus:border-[#d4af6a] rounded-[10px] text-xs sm:text-sm text-[#f5efe6] placeholder:text-[#8c8273] focus:outline-none transition-colors"
-            />
-          </div>
+          {/* Search Input (only shown when in standard tables, as Screener and Mapa have their own controls) */}
+          {activeTab !== 'screener' && activeTab !== 'mapa' && (
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a39a8c]" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar ticker ou empresa (ex: PETR4, MXRF11)..."
+                className="w-full pl-10 pr-4 py-2.5 bg-[#141210] border border-[#d4af6a]/20 focus:border-[#d4af6a] rounded-[10px] text-xs sm:text-sm text-[#f5efe6] placeholder:text-[#8c8273] focus:outline-none transition-colors"
+              />
+            </div>
+          )}
         </div>
 
         {/* Sliding Pill Tabs (Framer Motion) */}
@@ -249,7 +321,7 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                   isActive ? 'text-[#0b0a09]' : 'text-[#c2b9ac] hover:text-[#f5efe6]'
                 }`}
@@ -270,9 +342,26 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
           })}
         </div>
 
-        {/* Table Origin and Mode Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 mb-3 rounded-[10px] bg-[#141210] border border-[#d4af6a]/15 text-xs font-mono">
-          <div className="flex items-center gap-2 text-[#c2b9ac]">
+        {/* Dynamic Views: Screener vs Mapa vs Tabela Padrão */}
+        {activeTab === 'screener' ? (
+          <ScreenerSection
+            stocks={stocks}
+            isDemoMode={isDemoMode}
+            onSelectStockForChart={onSelectStockForChart}
+            onSelectStockForAi={onSelectStockForAi}
+          />
+        ) : activeTab === 'mapa' ? (
+          <MarketMapSection
+            stocks={stocks}
+            isDemoMode={isDemoMode}
+            onSelectStockForChart={onSelectStockForChart}
+            onSelectStockForAi={onSelectStockForAi}
+          />
+        ) : (
+          <>
+            {/* Table Origin and Mode Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 mb-3 rounded-[10px] bg-[#141210] border border-[#d4af6a]/15 text-xs font-mono">
+              <div className="flex items-center gap-2 text-[#c2b9ac]">
             <Clock className="w-3.5 h-3.5 text-[#d4af6a]" />
             <span>Atualizado em {updateLabel}</span>
             <span className="text-[#6e675c]">•</span>
@@ -341,7 +430,8 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-[#d4af6a]/12 bg-[#1c1916]/80 text-[11px] font-mono text-[#c2b9ac] uppercase tracking-wider">
-                  <th className="py-4 px-6 font-semibold">Ativo / Empresa</th>
+                  <th className="py-4 px-3 w-10 text-center font-semibold">Fav</th>
+                  <th className="py-4 px-5 font-semibold">Ativo / Empresa</th>
                   <th className="py-4 px-4 font-semibold hidden lg:table-cell">Setor B3</th>
                   <th className="py-4 px-4 font-semibold text-center">Histórico Real (30D)</th>
                   <th className="py-4 px-4 font-semibold text-right">Cotação (R$)</th>
@@ -356,6 +446,7 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
                   const avatar = getStockAvatar(stock.ticker);
                   const flash = flashMap.get(stock.ticker);
                   const isFii = stock.category === 'fii' || stock.ticker.endsWith('11');
+                  const fav = isFavorite(stock.ticker);
 
                   return (
                     <tr
@@ -363,8 +454,19 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
                       className="hover:bg-[#1c1916]/70 transition-colors group cursor-pointer"
                       onClick={() => onSelectStockForChart(stock)}
                     >
+                      {/* Favorite Button */}
+                      <td className="py-4 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => toggleFavorite(stock.ticker)}
+                          className="p-1 rounded hover:bg-[#d4af6a]/20 text-[#8c8273] hover:text-[#d4af6a] transition-all"
+                          title={fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                        >
+                          <Star className={`w-4 h-4 ${fav ? 'fill-[#d4af6a] text-[#d4af6a]' : ''}`} />
+                        </button>
+                      </td>
+
                       {/* Ticker & Avatar */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-5">
                         <div className="flex items-center gap-3">
                           <div
                             className={`w-9 h-9 rounded-[8px] bg-gradient-to-tr ${avatar.gradient} border border-[#d4af6a]/20 flex items-center justify-center font-mono font-bold text-xs text-[#f0d9a8] shrink-0 shadow-sm`}
@@ -373,15 +475,22 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="font-mono tabular-nums font-bold text-[#f5efe6] group-hover:text-[#f0d9a8] transition-colors">
+                              <Link
+                                to={`/mercado/${stock.ticker}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="font-mono tabular-nums font-bold text-[#f5efe6] group-hover:text-[#f0d9a8] hover:underline transition-colors"
+                              >
                                 {stock.ticker}
-                              </span>
+                              </Link>
                               <span className="text-[10px] font-mono px-1 rounded bg-[#1c1916] text-[#c2b9ac] border border-[#d4af6a]/10">
                                 {isFii ? 'FII' : 'B3'}
                               </span>
                             </div>
-                            <div className="text-xs text-[#c2b9ac] truncate max-w-[200px] font-normal">
-                              {stock.name}
+                            <div
+                              className="text-xs text-[#c2b9ac] truncate max-w-[200px] font-normal cursor-help"
+                              title={stock.name}
+                            >
+                              {getFriendlyCompanyName(stock.name, stock.ticker)}
                             </div>
                           </div>
                         </div>
@@ -490,16 +599,33 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-base text-[#f5efe6]">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(stock.ticker);
+                            }}
+                            className="p-0.5 rounded text-[#8c8273] hover:text-[#d4af6a] transition-all"
+                            title={isFavorite(stock.ticker) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                          >
+                            <Star className={`w-3.5 h-3.5 ${isFavorite(stock.ticker) ? 'fill-[#d4af6a] text-[#d4af6a]' : ''}`} />
+                          </button>
+                          <Link
+                            to={`/mercado/${stock.ticker}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-mono font-bold text-base text-[#f5efe6] hover:text-[#d4af6a] hover:underline transition-colors"
+                          >
                             {stock.ticker}
-                          </span>
+                          </Link>
                           <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#1c1916] text-[#c2b9ac] border border-[#d4af6a]/10">
                             {isFii ? 'FII' : 'B3'}
                           </span>
                         </div>
-                        {/* Nome completo sem truncar */}
-                        <div className="text-xs text-[#c2b9ac] font-normal leading-snug">
-                          {stock.name}
+                        {/* Nome amigável com nome completo no tooltip (Regra 5) */}
+                        <div
+                          className="text-xs text-[#c2b9ac] font-normal leading-snug cursor-help"
+                          title={stock.name}
+                        >
+                          {getFriendlyCompanyName(stock.name, stock.ticker)}
                         </div>
                       </div>
                     </div>
@@ -521,14 +647,16 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
                     </div>
                   </div>
 
-                  {/* Linha 2: sparkline à esquerda e os botões à direita (nada se sobrepondo) */}
+                  {/* Linha 2: sparkline à esquerda (se houver dados reais) e os botões à direita (Regra 4) */}
                   <div
                     className="pt-2.5 border-t border-[#d4af6a]/10 flex items-center justify-between gap-2"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="shrink-0">
-                      <MiniSparkline stock={stock} width={85} height={24} />
-                    </div>
+                    {Array.isArray(stock.sparkline) && stock.sparkline.length >= 2 && (
+                      <div className="shrink-0">
+                        <MiniSparkline stock={stock} width={85} height={24} />
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-2">
                       <button
@@ -556,6 +684,8 @@ export const StocksSection: React.FC<StocksSectionProps> = ({
             })}
           </div>
         )}
+      </>
+    )}
 
       </div>
     </section>

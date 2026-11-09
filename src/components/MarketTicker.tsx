@@ -26,54 +26,63 @@ export const MarketTicker: React.FC<MarketTickerProps> = ({
     {
       category: 'B3',
       label: 'IBOVESPA',
-      value: `${formatNumberBR(macro.ibovespa.points)} pts`,
-      change: macro.ibovespa.changePercent,
+      value: macro.ibovespa.points !== null ? `${formatNumberBR(macro.ibovespa.points)} pts` : (macro.ibovespa.statusText || 'Indisponível no momento'),
+      change: macro.ibovespa.points !== null ? macro.ibovespa.changePercent : null,
+      isAvailable: macro.ibovespa.points !== null,
       isRate: false,
     },
     {
       category: 'CÂMBIO',
-      label: 'DÓLAR COMERCIAL',
-      value: usd ? formatBRL(usd.bid) : 'R$ 5,48',
-      change: usd ? usd.pctChange : -0.35,
+      label: 'DÓLAR PTAX',
+      value: usd?.bid !== null && usd?.bid !== undefined ? formatBRL(usd.bid) : (usd?.statusText || 'Indisponível no momento'),
+      change: usd?.bid !== null && usd?.bid !== undefined ? usd.pctChange : null,
+      isAvailable: usd?.bid !== null && usd?.bid !== undefined,
       isRate: false,
+      tag: usd?.updatedAt?.includes('PTAX') ? usd.updatedAt : undefined,
     },
     {
       category: 'CÂMBIO',
-      label: 'EURO',
-      value: eur ? formatBRL(eur.bid) : 'R$ 6,01',
-      change: eur ? eur.pctChange : -0.18,
+      label: 'EURO PTAX',
+      value: eur?.bid !== null && eur?.bid !== undefined ? formatBRL(eur.bid) : (eur?.statusText || 'Indisponível no momento'),
+      change: eur?.bid !== null && eur?.bid !== undefined ? eur.pctChange : null,
+      isAvailable: eur?.bid !== null && eur?.bid !== undefined,
       isRate: false,
+      tag: eur?.updatedAt?.includes('PTAX') ? eur.updatedAt : undefined,
     },
     {
       category: 'CRIPTO',
       label: 'BITCOIN',
-      value: btc ? formatBRL(btc.priceBrl, 0) : 'R$ 362.450',
-      change: btc ? btc.change24h : 2.34,
+      value: btc?.priceBrl !== null && btc?.priceBrl !== undefined ? formatBRL(btc.priceBrl, 0) : (btc?.statusText || 'Indisponível no momento'),
+      change: btc?.priceBrl !== null && btc?.priceBrl !== undefined ? btc.change24h : null,
+      isAvailable: btc?.priceBrl !== null && btc?.priceBrl !== undefined,
       isRate: false,
     },
     {
       category: 'JUROS',
       label: 'TAXA SELIC',
-      value: `${macro.selic.rateAnnual.toFixed(2)}% a.a.`,
-      change: 0,
+      value: macro.selic.rateAnnual !== null ? `${macro.selic.rateAnnual.toFixed(2)}% a.a.` : (macro.selic.statusText || 'Indisponível no momento'),
+      change: null,
+      isAvailable: macro.selic.rateAnnual !== null,
       isRate: true,
-      tag: 'Meta BCB',
+      tag: macro.selic.rateAnnual !== null ? 'Meta BCB' : undefined,
     },
     {
       category: 'JUROS',
-      label: 'CDI',
-      value: `${macro.cdi.rateAnnual.toFixed(2)}% a.a.`,
-      change: 0,
+      label: macro.cdi.isEstimated ? 'CDI ESTIMADO' : 'CDI',
+      value: macro.cdi.rateAnnual !== null ? `${macro.cdi.rateAnnual.toFixed(2)}% a.a.` : (macro.cdi.statusText || 'Indisponível no momento'),
+      change: null,
+      isAvailable: macro.cdi.rateAnnual !== null,
       isRate: true,
-      tag: 'Benchmark',
+      tag: macro.cdi.rateAnnual !== null ? (macro.cdi.isEstimated ? 'Estimado' : 'Bacen') : undefined,
     },
     {
       category: 'JUROS',
       label: 'IPCA (12M)',
-      value: `${macro.ipca.rate12m.toFixed(2)}% a.a.`,
-      change: 0,
+      value: macro.ipca.rate12m !== null ? `${macro.ipca.rate12m.toFixed(2)}% a.a.` : (macro.ipca.statusText || 'Indisponível no momento'),
+      change: null,
+      isAvailable: macro.ipca.rate12m !== null,
       isRate: true,
-      tag: 'Inflação',
+      tag: macro.ipca.rate12m !== null ? 'Inflação' : undefined,
     },
   ];
 
@@ -101,19 +110,20 @@ export const MarketTicker: React.FC<MarketTickerProps> = ({
           )}
         </div>
 
-        {/* Continuous Smooth Loop Marquee with Edge Fades */}
+        {/* Continuous Smooth Loop Marquee with Clean Start and Edge Fades */}
         <div
-          className="flex-1 overflow-hidden relative cursor-default"
+          className="flex-1 overflow-hidden relative cursor-default pl-2"
           style={{
-            maskImage: 'linear-gradient(to right, transparent, black 4%, black 96%, transparent)',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, black 4%, black 96%, transparent)',
+            maskImage: 'linear-gradient(to right, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)',
           }}
           title="Passe o cursor para pausar a rolagem"
         >
-          <div className="animate-marquee items-center gap-6 py-0.5 text-xs whitespace-nowrap">
+          <div className="animate-marquee items-center gap-6 py-0.5 text-xs whitespace-nowrap pl-4">
             {duplicatedItems.map((item, idx) => {
-              const isPositive = item.change > 0;
-              const isNegative = item.change < 0;
+              const hasValidChange = item.isAvailable && item.change !== null && item.change !== undefined;
+              const isPositive = hasValidChange && (item.change as number) > 0;
+              const isNegative = hasValidChange && (item.change as number) < 0;
 
               return (
                 <div key={idx} className="inline-flex items-center gap-2 group shrink-0">
@@ -129,7 +139,8 @@ export const MarketTicker: React.FC<MarketTickerProps> = ({
                     {item.value}
                   </span>
 
-                  {!item.isRate ? (
+                  {/* Variação só é exibida quando o dado estiver disponível */}
+                  {!item.isRate && hasValidChange ? (
                     <span
                       className={`inline-flex items-center gap-0.5 font-mono tabular-nums text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
                         isPositive
@@ -142,13 +153,13 @@ export const MarketTicker: React.FC<MarketTickerProps> = ({
                       {isPositive && <TrendingUp className="w-3 h-3 text-[#3ddc97]" />}
                       {isNegative && <TrendingDown className="w-3 h-3 text-[#ff5c6c]" />}
                       {!isPositive && !isNegative && <Minus className="w-3 h-3" />}
-                      {formatPercent(item.change, false)}
+                      {formatPercent(item.change as number, false)}
                     </span>
-                  ) : (
+                  ) : item.isRate && item.tag ? (
                     <span className="text-[10px] text-[#f0d9a8] bg-[#d4af6a]/10 px-2 py-0.5 rounded-full font-mono font-medium border border-[#d4af6a]/20">
                       {item.tag}
                     </span>
-                  )}
+                  ) : null}
 
                   <span className="text-[#d4af6a]/25 select-none font-thin text-xs ml-3">
                     •

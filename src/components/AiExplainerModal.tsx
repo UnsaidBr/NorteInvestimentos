@@ -10,8 +10,11 @@ import {
   Copy,
   AlertTriangle,
   Zap,
+  Crown,
+  Lock,
 } from 'lucide-react';
 import { LEGAL_DISCLAIMER } from '../constants/config';
+import { usePlan } from '../context/PlanContext';
 
 interface AiExplainerModalProps {
   stock: StockItem | null;
@@ -19,9 +22,11 @@ interface AiExplainerModalProps {
 }
 
 export const AiExplainerModal: React.FC<AiExplainerModalProps> = ({ stock, onClose }) => {
+  const { isPremium, aiUsageToday, canUseAi, recordAiUsage, openWaitlistModal } = usePlan();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AiExplanationResponse | null>(null);
   const [copied, setCopied] = useState(false);
+  const [quotaBlocked, setQuotaBlocked] = useState(false);
 
   const [displayedWords, setDisplayedWords] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -29,12 +34,21 @@ export const AiExplainerModal: React.FC<AiExplainerModalProps> = ({ stock, onClo
 
   useEffect(() => {
     if (!stock) return;
+
+    if (!canUseAi) {
+      setQuotaBlocked(true);
+      setLoading(false);
+      return;
+    }
+
+    setQuotaBlocked(false);
     setLoading(true);
     setData(null);
     setDisplayedWords([]);
     setIsTyping(false);
 
     getStockAiExplanation(stock).then((res) => {
+      recordAiUsage();
       setData(res);
       setLoading(false);
       fullTextRef.current = res.explanation;
@@ -56,7 +70,7 @@ export const AiExplainerModal: React.FC<AiExplainerModalProps> = ({ stock, onClo
 
       return () => clearInterval(interval);
     });
-  }, [stock]);
+  }, [stock, canUseAi, recordAiUsage]);
 
   if (!stock) return null;
 
@@ -105,9 +119,16 @@ export const AiExplainerModal: React.FC<AiExplainerModalProps> = ({ stock, onClo
             </div>
 
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#d4af6a]/15 text-[#f0d9a8] border border-[#d4af6a]/30">
-                  NorteInvest IA • Síntese de Mercado
+                  NorteInvest IA • Síntese
+                </span>
+                <span className={`text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded-full border ${
+                  isPremium
+                    ? 'bg-[#d4af6a]/20 text-[#f0d9a8] border-[#d4af6a]/40'
+                    : 'bg-[#141210] text-[#c2b9ac] border-[#d4af6a]/15'
+                }`}>
+                  {isPremium ? '⭐ IA Ilimitada' : `${Math.min(aiUsageToday, 3)}/3 consultas hoje`}
                 </span>
               </div>
               <h3 className="text-lg sm:text-xl font-serif font-bold text-[#f5efe6] tracking-tight mt-1">
@@ -155,7 +176,39 @@ export const AiExplainerModal: React.FC<AiExplainerModalProps> = ({ stock, onClo
 
         {/* Modal Body */}
         <div className="p-5 sm:p-7 space-y-5 overflow-y-auto">
-          {loading ? (
+          {quotaBlocked ? (
+            <div className="py-8 px-6 text-center space-y-4 rounded-[14px] bg-[#1c1916] border border-amber-500/30 shadow-lg">
+              <div className="w-12 h-12 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-lg font-serif font-bold text-[#f5efe6]">
+                  Limite diário de 3 consultas com IA atingido
+                </h4>
+                <p className="text-xs text-[#c2b9ac] max-w-md mx-auto leading-relaxed">
+                  No plano Gratuito, você tem até 3 explicações didáticas por dia. Quer navegar por todo o mercado sem interrupções? Desbloqueie consultas ilimitadas com o NorteInvest Premium.
+                </p>
+              </div>
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={() => {
+                    onClose();
+                    openWaitlistModal('Limite de 3 explicações de IA por dia atingido no plano Gratuito');
+                  }}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-[10px] bg-gradient-to-r from-[#d4af6a] to-[#e6ca85] hover:brightness-110 text-[#0a0908] text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Crown className="w-4 h-4" />
+                  <span>Entrar na lista de espera Premium</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-[10px] bg-[#141210] hover:bg-[#1c1916] text-[#a39a8c] hover:text-[#f5efe6] border border-[#d4af6a]/20 text-xs transition-colors cursor-pointer"
+                >
+                  Voltar amanhã
+                </button>
+              </div>
+            </div>
+          ) : loading ? (
             <div className="py-12 text-center space-y-4">
               <div className="flex items-center justify-center gap-2 py-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#d4af6a] animate-bounce [animation-delay:-0.3s]" />

@@ -270,7 +270,7 @@ export const SimulatorSection: React.FC<SimulatorSectionProps> = ({
             <div className="flex items-center gap-2 text-[#c2b9ac]">
               <Landmark className="w-4 h-4 text-[#d4af6a]" />
               <span>
-                Taxa Selic Meta: <strong className="text-[#f5efe6] font-mono tabular-nums">{macro.selic.rateAnnual.toFixed(2)}% a.a.</strong> • CDI: <strong className="text-[#d4af6a] font-mono tabular-nums">{cdiAnnual.toFixed(2)}% a.a.</strong>
+                Taxa Selic Meta: <strong className="text-[#f5efe6] font-mono tabular-nums">{macro.selic.rateAnnual !== null ? `${macro.selic.rateAnnual.toFixed(2)}% a.a.` : (macro.selic.statusText || 'Indisponível')}</strong> • {macro.cdi.label || (macro.cdi.isEstimated ? 'CDI estimado' : 'CDI')}: <strong className="text-[#d4af6a] font-mono tabular-nums">{macro.cdi.rateAnnual !== null ? `${cdiAnnual.toFixed(2)}% a.a.` : (macro.cdi.statusText || 'Indisponível')}</strong>
               </span>
             </div>
             <span className="text-[11px] text-[#8c8273] font-mono">

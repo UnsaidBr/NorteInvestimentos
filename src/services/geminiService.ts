@@ -31,14 +31,13 @@ export async function getStockAiExplanation(stock: StockItem): Promise<AiExplana
     const data = await response.json();
     return data;
   } catch (error: any) {
-    console.warn('Erro ao chamar IA, utilizando resposta didática de contingência:', error);
-    const isUp = stock.changePercent >= 0;
+    console.warn('Falha ou ausência da chave Gemini:', error?.message || error);
     return {
       symbol: stock.ticker,
-      explanation: `Em termos gerais e educativos, a ${isUp ? 'alta' : 'baixa'} recente de ${stock.ticker} (${stock.name}) reflete o balanço diário de liquidez e expectativas do mercado sobre o setor de ${stock.sector || 'atuação da empresa'}. Fatores como movimentações da taxa de juros (Selic), oscilações cambiais e apetite institucional a risco costumam influenciar esse comportamento na B3.`,
+      explanation: 'Explicação por IA indisponível no momento. Tente novamente em instantes.',
       disclaimer: 'Conteúdo informativo e educacional. Não constitui recomendação de investimento. Rentabilidade passada não garante resultados futuros.',
       isFallback: true,
-      errorNotice: 'Modo offline educacional.',
+      errorNotice: 'Explicação por IA indisponível no momento.',
     };
   }
 }

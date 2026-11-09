@@ -9,7 +9,7 @@ import { Globe } from 'lucide-react';
 export const CryptoPage: React.FC = () => {
   usePageMeta(
     'Criptomoedas & Câmbio Mundial | Cotações em Reais | NorteInvest',
-    'Cotações de Bitcoin, Ethereum, Solana, Dólar comercial, Euro, Ouro e principais moedas mundiais convertidas em Reais (BRL) atualizadas a cada 60 segundos.'
+    'Cotações de Bitcoin, Ethereum, Solana, Dólar PTAX e Euro PTAX (Banco Central) convertidas em Reais (BRL) atualizadas periodicamente.'
   );
 
   const { marketState } = useMarket();
@@ -21,7 +21,7 @@ export const CryptoPage: React.FC = () => {
         badgeColor="gold"
         title="Criptomoedas e"
         titleHighlight="Câmbio Mundial"
-        subtitle="Acompanhe o valor de mercado das principais moedas digitais (Bitcoin, Ethereum, Solana) e pares cambiais soberanos (Dólar, Euro, Ouro) com calculadora de conversão instantânea para Reais."
+        subtitle="Acompanhe o valor de mercado das principais moedas digitais (Bitcoin, Ethereum, Solana) e cotações oficiais PTAX (Dólar e Euro) com calculadora de conversão instantânea para Reais."
         breadcrumbs={[{ label: 'Cripto & Câmbio' }]}
       >
         <div className="flex items-center gap-2 px-3.5 py-2 rounded-[10px] bg-[#141210] border border-[#d4af6a]/20 text-xs font-mono">

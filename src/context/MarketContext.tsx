@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { StockItem, CryptoItem, CurrencyItem, MacroIndicators } from '../types/market';
 import { fetchMarketData, MarketDataState } from '../services/marketService';
-import { INITIAL_STOCKS, INITIAL_CRYPTOS, INITIAL_CURRENCIES, INITIAL_MACRO } from '../data/mockMarketData';
+import { INITIAL_STOCKS, INITIAL_CRYPTOS, INITIAL_CURRENCIES } from '../data/mockMarketData';
 import { AUTO_REFRESH_SECONDS } from '../constants/config';
 
 interface MarketContextType {
@@ -18,13 +18,27 @@ interface MarketContextType {
 const MarketContext = createContext<MarketContextType | undefined>(undefined);
 
 export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isDemoEnv = import.meta.env.VITE_DEMO_MODE === 'true';
+
   const [marketState, setMarketState] = useState<MarketDataState>({
-    stocks: INITIAL_STOCKS,
-    cryptos: INITIAL_CRYPTOS,
-    currencies: INITIAL_CURRENCIES,
-    macro: INITIAL_MACRO,
+    stocks: isDemoEnv ? INITIAL_STOCKS : [],
+    cryptos: isDemoEnv ? INITIAL_CRYPTOS : [
+      { id: 'bitcoin', name: 'Bitcoin', symbol: 'BTC', priceBrl: null, change24h: null, statusText: 'Carregando...', isRealData: false },
+      { id: 'ethereum', name: 'Ethereum', symbol: 'ETH', priceBrl: null, change24h: null, statusText: 'Carregando...', isRealData: false },
+      { id: 'solana', name: 'Solana', symbol: 'SOL', priceBrl: null, change24h: null, statusText: 'Carregando...', isRealData: false },
+    ],
+    currencies: isDemoEnv ? INITIAL_CURRENCIES : [
+      { code: 'USD', name: 'Dólar PTAX', symbol: 'US$', bid: null, pctChange: null, statusText: 'Carregando...', isRealData: false },
+      { code: 'EUR', name: 'Euro PTAX', symbol: '€', bid: null, pctChange: null, statusText: 'Carregando...', isRealData: false },
+    ],
+    macro: {
+      selic: { rateAnnual: null, date: '—', source: 'Banco Central do Brasil', statusText: 'Carregando...' },
+      cdi: { rateAnnual: null, isEstimated: false, label: 'CDI', statusText: 'Carregando...' },
+      ipca: { rate12m: null, date: '—', statusText: 'Carregando...' },
+      ibovespa: { points: null, changePercent: null, statusText: 'Carregando...' },
+    },
     lastUpdated: new Date(),
-    isDemoMode: false,
+    isDemoMode: isDemoEnv,
     isLoading: true,
     error: null,
   });

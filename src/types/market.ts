@@ -15,6 +15,12 @@ export interface StockItem {
   sparkline?: number[];
   updatedAt?: string;
   isRealData?: boolean;
+  // Screener fundamental indicators (strictly undefined if not returned by API)
+  dividendYield?: number; // e.g. 6.2 for 6.2%
+  pl?: number; // Preço / Lucro
+  pvp?: number; // Preço / Valor Patrimonial
+  roe?: number; // Return on Equity (%)
+  avgVolume?: number; // Average volume
 }
 
 export interface StockHistoryPoint {
@@ -28,46 +34,100 @@ export interface StockHistoryPoint {
   close?: number;
 }
 
-export type TimeframeFilter = '1D' | '1S' | '1M' | '6M' | '1A';
+export type TimeframeFilter = '1D' | '1S' | '1M' | '6M' | '1A' | '5A';
+
+export interface DividendRecord {
+  paymentDate: string;
+  rate: number;
+  label: string; // 'DIVIDENDO' | 'JCP' | 'RENDIMENTO'
+  lastDatePrior?: string; // Data com
+  approvedOn?: string;
+}
+
+export interface DividendCalendarItem {
+  id: string;
+  ticker: string;
+  name: string;
+  category: 'acao' | 'fii';
+  label: 'DIVIDENDO' | 'JCP' | 'RENDIMENTO';
+  rate: number;
+  lastDatePrior: string; // Data COM
+  paymentDate: string; // Data de Pagamento
+  approvedOn?: string;
+  currentPrice?: number;
+  yieldApprox?: number;
+}
+
+export interface StockDetailData extends StockItem {
+  fiftyTwoWeekLow?: number;
+  fiftyTwoWeekHigh?: number;
+  description?: string;
+  website?: string;
+  industry?: string;
+  dividends?: DividendRecord[];
+  dividendsByYear?: { year: string; total: number; count: number }[];
+}
 
 export interface CryptoItem {
   id: string;
   name: string;
   symbol: string;
-  priceBrl: number;
-  change24h: number;
+  priceBrl: number | null;
+  change24h: number | null;
   volume24hBrl?: number;
   marketCapBrl?: number;
   icon?: string;
+  statusText?: string;
+  isRealData?: boolean;
+  sparkline?: number[];
 }
 
 export interface CurrencyItem {
   code: string;
   name: string;
   symbol: string;
-  bid: number; // Buying price in BRL
+  bid: number | null; // Buying price in BRL
   ask?: number;
-  pctChange: number;
+  pctChange: number | null;
   high?: number;
   low?: number;
   updatedAt?: string;
+  source?: string;
+  statusText?: string;
+  isRealData?: boolean;
+  sparkline?: number[];
 }
 
 export interface MacroIndicators {
   ibovespa: {
-    points: number;
-    changePercent: number;
+    points: number | null;
+    changePercent: number | null;
+    statusText?: string;
+    lastRealAt?: string;
+    sparkline?: number[];
   };
   selic: {
-    rateAnnual: number;
+    rateAnnual: number | null;
     date: string;
     source: string;
+    warning?: string | null;
+    statusText?: string;
+    lastRealAt?: string;
   };
   cdi: {
-    rateAnnual: number;
+    rateAnnual: number | null;
+    date?: string;
+    isEstimated?: boolean;
+    label?: string; // "CDI (Bacen)" or "CDI estimado"
+    statusText?: string;
+    lastRealAt?: string;
   };
   ipca: {
-    rate12m: number;
+    rate12m: number | null;
+    date?: string;
+    source?: string;
+    statusText?: string;
+    lastRealAt?: string;
   };
 }
 
