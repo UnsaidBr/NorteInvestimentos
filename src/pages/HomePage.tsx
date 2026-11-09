@@ -30,7 +30,9 @@ export const HomePage: React.FC = () => {
 
   // Simulação patrimonial dinâmica na Home a partir do CDI atual com tabela regressiva de IR
   const homeSimulation = useMemo(() => {
-    const cdiAnnual = macro.cdi.rateAnnual || 13.65;
+    // Nunca usar taxa inventada: sem CDI real, a linha do CDI mostra "indisponível"
+    const cdiAvailable = typeof macro.cdi.rateAnnual === 'number' && macro.cdi.rateAnnual > 0;
+    const cdiAnnual = cdiAvailable ? (macro.cdi.rateAnnual as number) : 0;
     const poupancaAnnual = 6.17;
     const ibovAnnual = 12.0;
     const initAmt = 5000;
@@ -58,8 +60,16 @@ export const HomePage: React.FC = () => {
     const cdiTax = Math.round(cdiProfit * 0.15);
     const cdiNet = cdiGross - cdiTax;
 
+    const maxValue = Math.max(cdiAvailable ? cdiGross : 0, Math.round(bIbov), Math.round(bPoup), 1);
+    const pct = (v: number) => `${Math.max(4, Math.min(100, (v / maxValue) * 100)).toFixed(1)}%`;
+
     return {
+      cdiAvailable,
       cdiAnnual,
+      barCdi: pct(cdiNet),
+      barIbov: pct(Math.round(bIbov)),
+      barPoup: pct(Math.round(bPoup)),
+      barDeposited: pct(totalDep),
       totalDeposited: Math.round(totalDep),
       cdiGross,
       cdiNet,
@@ -125,8 +135,8 @@ export const HomePage: React.FC = () => {
                   <span className="font-semibold text-[#f5efe6]">{formatBRL(homeSimulation.poupanca, 0)}</span>
                 </div>
                 <div className="flex justify-between items-center text-[#d4af6a] font-bold">
-                  <span>CDI 100% Líquido ({homeSimulation.cdiAnnual.toFixed(2)}% a.a.):</span>
-                  <span className="text-sm">{formatBRL(homeSimulation.cdiNet, 0)} (descontado IR 15%)</span>
+                  <span>CDI 100% Líquido ({homeSimulation.cdiAvailable ? `${homeSimulation.cdiAnnual.toFixed(2)}% a.a.` : 'indisponível'}):</span>
+                  <span className="text-sm">{homeSimulation.cdiAvailable ? `${formatBRL(homeSimulation.cdiNet, 0)} (descontado IR 15%)` : 'Indisponível no momento'}</span>
                 </div>
               </div>
 
@@ -161,12 +171,12 @@ export const HomePage: React.FC = () => {
                   <div>
                     <div className="flex justify-between text-[#f5efe6] mb-1.5">
                       <span className="flex items-center gap-1.5 text-[#d4af6a] font-bold">
-                        <span className="w-2 h-2 rounded-full bg-[#d4af6a]" /> 100% do CDI (Bruto {formatBRL(homeSimulation.cdiGross, 0)})
+                        <span className="w-2 h-2 rounded-full bg-[#d4af6a]" /> 100% do CDI {homeSimulation.cdiAvailable ? `(Bruto ${formatBRL(homeSimulation.cdiGross, 0)})` : '(indisponível)'}
                       </span>
-                      <span className="font-bold text-[#d4af6a]">{formatBRL(homeSimulation.cdiNet, 0)} (Líquido)</span>
+                      <span className="font-bold text-[#d4af6a]">{homeSimulation.cdiAvailable ? `${formatBRL(homeSimulation.cdiNet, 0)} (Líquido)` : '—'}</span>
                     </div>
                     <div className="h-2.5 w-full bg-[#1c1916] rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#b58d46] to-[#f0d9a8] rounded-full w-[95%]" />
+                      <div className="h-full bg-gradient-to-r from-[#b58d46] to-[#f0d9a8] rounded-full" style={{ width: homeSimulation.cdiAvailable ? homeSimulation.barCdi : '0%' }} />
                     </div>
                   </div>
 
@@ -178,7 +188,7 @@ export const HomePage: React.FC = () => {
                       <span className="font-bold text-[#f5efe6]">{formatBRL(homeSimulation.ibovespa, 0)}</span>
                     </div>
                     <div className="h-2.5 w-full bg-[#1c1916] rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#2ea872] to-[#3ddc97] rounded-full w-[100%]" />
+                      <div className="h-full bg-gradient-to-r from-[#2ea872] to-[#3ddc97] rounded-full" style={{ width: homeSimulation.barIbov }} />
                     </div>
                   </div>
 
@@ -190,7 +200,7 @@ export const HomePage: React.FC = () => {
                       <span>{formatBRL(homeSimulation.poupanca, 0)}</span>
                     </div>
                     <div className="h-2.5 w-full bg-[#1c1916] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#6e675c] rounded-full w-[80%]" />
+                      <div className="h-full bg-[#6e675c] rounded-full" style={{ width: homeSimulation.barPoup }} />
                     </div>
                   </div>
 
@@ -202,13 +212,13 @@ export const HomePage: React.FC = () => {
                       <span>{formatBRL(homeSimulation.totalDeposited, 0)}</span>
                     </div>
                     <div className="h-2.5 w-full bg-[#1c1916] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#3d3830] rounded-full w-[65%]" />
+                      <div className="h-full bg-[#3d3830] rounded-full" style={{ width: homeSimulation.barDeposited }} />
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-[#d4af6a]/10 flex items-center justify-between text-xs text-[#c2b9ac]">
-                  <span>Projeção para 36 meses calculada pelo CDI atual com tabela regressiva de IR.</span>
+                  <span>Estimativa simplificada para 36 meses: CDI atual, IR único de 15% sobre o lucro e Ibovespa em cenário hipotético. Não é promessa de retorno.</span>
                   <Link to="/simulador" className="text-[#d4af6a] hover:text-[#f0d9a8] font-semibold">
                     Simular outros valores →
                   </Link>

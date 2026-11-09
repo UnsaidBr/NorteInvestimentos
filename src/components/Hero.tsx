@@ -108,7 +108,7 @@ export const Hero: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
             className="text-base sm:text-lg text-[#c2b9ac] max-w-2xl mx-auto font-normal leading-relaxed"
           >
-            Cotações da B3 em tempo real, múltiplos contábeis, fórmulas consagradas de Benjamin Graham e Décio Bazin, radar completo de FIIs e simulações patrimoniais dinâmicas.
+            Cotações da B3 atualizadas a cada 60 segundos, múltiplos contábeis, fórmulas consagradas de Benjamin Graham e Décio Bazin, radar completo de FIIs e simulações patrimoniais dinâmicas.
           </motion.p>
         </div>
 

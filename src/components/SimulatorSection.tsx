@@ -28,9 +28,11 @@ export const SimulatorSection: React.FC<SimulatorSectionProps> = ({
   const [monthlyDeposit, setMonthlyDeposit] = useState<number>(500);
   const [periodMonths, setPeriodMonths] = useState<number>(36);
 
-  const cdiAnnual = macro.cdi.rateAnnual || 10.65;
+  // Nunca usar taxa inventada: sem CDI real a simulação não é exibida
+  const cdiAvailable = typeof macro.cdi.rateAnnual === 'number' && macro.cdi.rateAnnual > 0;
+  const cdiAnnual = cdiAvailable ? (macro.cdi.rateAnnual as number) : 0;
   const poupancaAnnual = 6.17;
-  const ibovespaAnnual = 12.50;
+  const ibovespaAnnual = 12.0; // cenário hipotético (mesmo valor da página inicial)
   const dolarAnnual = 8.00;
 
   const [visibleSeries, setVisibleSeries] = useState({
@@ -69,7 +71,7 @@ export const SimulatorSection: React.FC<SimulatorSectionProps> = ({
     ibovespa: {
       name: 'Ibovespa',
       color: '#3ddc97',
-      rate: '12,50% a.a.',
+      rate: '12,00% a.a.',
     },
     dolar: {
       name: 'Dólar',
@@ -158,6 +160,20 @@ export const SimulatorSection: React.FC<SimulatorSectionProps> = ({
     { label: '5 Anos', months: 60 },
     { label: '10 Anos', months: 120 },
   ];
+
+  if (!cdiAvailable) {
+    return (
+      <section id="simulador" className="py-16 sm:py-24 bg-[#0b0a09]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#f5efe6]">Simulador indisponível no momento</h2>
+          <p className="text-sm text-[#c2b9ac] leading-relaxed">
+            Não conseguimos obter a taxa CDI atual do Banco Central. Para não exibir uma simulação com número inventado,
+            o simulador volta assim que a taxa estiver disponível. Tente atualizar em alguns instantes.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="simulador" className="py-16 sm:py-24 bg-[#0b0a09]">
@@ -368,7 +384,7 @@ export const SimulatorSection: React.FC<SimulatorSectionProps> = ({
               <span className="text-xs uppercase font-mono font-medium text-[#3ddc97]">
                 Ibovespa (Média)
               </span>
-              <span className="text-[10px] text-[#3ddc97] font-mono">12,50% a.a.</span>
+              <span className="text-[10px] text-[#3ddc97] font-mono">12,00% a.a.</span>
             </div>
             <div className="font-mono tabular-nums font-bold text-xl text-[#f5efe6]">
               {formatBRL(final.ibovespa, 0)}
@@ -438,7 +454,7 @@ export const SimulatorSection: React.FC<SimulatorSectionProps> = ({
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-[#3ddc97]" />
-                <span className="font-medium">Ibovespa (12,5%)</span>
+                <span className="font-medium">Ibovespa (12%, hipotético)</span>
               </button>
 
               <button

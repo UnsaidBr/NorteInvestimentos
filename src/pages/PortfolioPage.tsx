@@ -39,7 +39,7 @@ import {
 export const PortfolioPage: React.FC = () => {
   usePageMeta(
     `Minha Carteira & Projeção de Dividendos | ${APP_NAME}`,
-    'Acompanhe seu patrimônio consolidado na B3, alocação por classes de ativos, rentabilidade em tempo real e gráfico de projeção de proventos mensais sem login.'
+    'Acompanhe seu patrimônio consolidado na B3, alocação por classes de ativos, rentabilidade com cotações atualizadas a cada 60 segundos e gráfico de projeção de proventos mensais sem login.'
   );
 
   const { marketState } = useMarket();

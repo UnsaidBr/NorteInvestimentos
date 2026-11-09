@@ -33,7 +33,7 @@ const CATEGORIES: CategoryItem[] = [
     id: 'acoes',
     title: 'Ações B3',
     badge: '80+ Ativos',
-    description: 'Cotações em tempo real e múltiplos',
+    description: 'Cotações atualizadas a cada 60 segundos e múltiplos',
     path: '/mercado',
     icon: TrendingUp,
   },

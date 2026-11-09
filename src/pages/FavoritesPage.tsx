@@ -30,7 +30,7 @@ import {
 export const FavoritesPage: React.FC = () => {
   usePageMeta(
     'Meus Ativos Favoritos',
-    'Acompanhe cotações em tempo real, variação diária, gráficos sparkline e indicadores fundamentalistas dos seus ativos salvos da B3.'
+    'Acompanhe cotações atualizadas a cada 60 segundos, variação diária, gráficos sparkline e indicadores fundamentalistas dos seus ativos salvos da B3.'
   );
 
   const navigate = useNavigate();
@@ -250,7 +250,7 @@ export const FavoritesPage: React.FC = () => {
             <div className="text-lg font-mono font-bold text-[#34d399] mt-1 truncate">
               {stats.best.ticker} (+{stats.best.changePercent.toFixed(2)}%)
             </div>
-            <span className="text-[11px] text-[#8c8273] truncate block">R$ {formatBRL(stats.best.price)}</span>
+            <span className="text-[11px] text-[#8c8273] truncate block">{formatBRL(stats.best.price)}</span>
           </div>
 
           <div className="p-4 rounded-xl bg-[#141210] border border-[#d4af6a]/15">
@@ -258,7 +258,7 @@ export const FavoritesPage: React.FC = () => {
             <div className="text-lg font-mono font-bold text-[#f87171] mt-1 truncate">
               {stats.worst.ticker} ({stats.worst.changePercent.toFixed(2)}%)
             </div>
-            <span className="text-[11px] text-[#8c8273] truncate block">R$ {formatBRL(stats.worst.price)}</span>
+            <span className="text-[11px] text-[#8c8273] truncate block">{formatBRL(stats.worst.price)}</span>
           </div>
         </div>
       )}

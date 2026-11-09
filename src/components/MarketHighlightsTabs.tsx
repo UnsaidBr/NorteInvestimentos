@@ -55,7 +55,7 @@ const TABS: TabDefinition[] = [
     label: 'Mais Buscadas',
     shortLabel: 'Mais Buscadas',
     icon: Flame,
-    description: 'Ativos de maior liquidez e volume de busca na B3 em tempo real',
+    description: 'Ativos de maior liquidez e volume de busca na B3',
   },
   {
     key: 'high_dividends',
@@ -69,14 +69,14 @@ const TABS: TabDefinition[] = [
     label: 'Maiores Altas',
     shortLabel: 'Altas',
     icon: TrendingUp,
-    description: 'Ações com maior valorização percentual na sessão ao vivo da B3',
+    description: 'Ações com maior valorização percentual na sessão da B3',
   },
   {
     key: 'top_losers',
     label: 'Maiores Baixas',
     shortLabel: 'Baixas',
     icon: TrendingDown,
-    description: 'Ações com maior retração percentual na sessão ao vivo da B3',
+    description: 'Ações com maior retração percentual na sessão da B3',
   },
 ];
 

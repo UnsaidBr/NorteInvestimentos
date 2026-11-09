@@ -63,7 +63,7 @@ export const PremiumModal: React.FC = () => {
     {
       icon: <Star className="w-4 h-4 text-[#d4af6a]" />,
       title: 'Favoritos Ilimitados',
-      desc: 'Monitore mais de 5 ativos na sua carteira personalizada com cotações e sparklines ao vivo.',
+      desc: 'Monitore mais de 5 ativos na sua carteira personalizada com cotações e sparklines atualizados a cada 60 segundos.',
     },
     {
       icon: <Sparkles className="w-4 h-4 text-[#d4af6a]" />,
