@@ -450,7 +450,7 @@ export const StockDetailPage: React.FC = () => {
     : `${normalizedTicker} | Cotação e Indicadores B3 | NorteInvest`;
 
   const pageDescription = stockDetail
-    ? `Acompanhe a cotação de ${stockDetail.ticker} (${stockDetail.name}) em tempo real na B3: ${formatBRL(stockDetail.price)}, variação de ${formatPercent(stockDetail.changePercent)}, múltiplos P/L e P/VP, histórico de proventos e comparação setorial.`
+    ? `Acompanhe a cotação de ${stockDetail.ticker} (${stockDetail.name}) na B3 (dados com atraso de até 15 min): ${formatBRL(stockDetail.price)}, variação de ${formatPercent(stockDetail.changePercent)}, múltiplos P/L e P/VP, histórico de proventos e comparação setorial.`
     : `Consulte cotações, múltiplos fundamentalistas e gráficos históricos do ativo ${normalizedTicker} na bolsa brasileira.`;
 
   usePageMeta(pageTitle, pageDescription);
@@ -779,7 +779,7 @@ export const StockDetailPage: React.FC = () => {
             {stockDetail.isRealData ? (
               <span className="flex items-center gap-1.5 text-[#3ddc97]">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Cotação Oficial B3 (brapi.dev)</span>
+                <span>Cotação B3 (via brapi.dev)</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-amber-300">

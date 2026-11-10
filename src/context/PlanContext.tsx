@@ -140,22 +140,35 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
           createdAt: new Date().toISOString(),
         };
 
+        // 1. Envia ao servidor PRIMEIRO. Só confirma se o servidor realmente gravou.
+        let serverOk = false;
+        let serverMsg = '';
+        try {
+          const res = await fetch('/api/waitlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(entry),
+          });
+          const data = await res.json().catch(() => null);
+          serverOk = res.ok && !!data?.success;
+          serverMsg = (data && data.error) || '';
+        } catch {
+          serverOk = false;
+        }
+
+        if (!serverOk) {
+          return {
+            success: false,
+            message: serverMsg || 'Não foi possível registrar seu e-mail agora. Ele NÃO foi salvo. Tente novamente em instantes.',
+          };
+        }
+
+        // 2. Servidor confirmou: guarda cópia local só para lembrar que o usuário já entrou
         const filtered = existingList.filter((item: any) => item.email !== cleanEmail);
         filtered.push(entry);
         localStorage.setItem(STORAGE_KEY_WAITLIST, JSON.stringify(filtered));
         localStorage.setItem('norteinvest_has_joined_waitlist', 'true');
         setIsWaitlistSubscribed(true);
-
-        // 2. Post to backend API if available
-        try {
-          await fetch('/api/waitlist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entry),
-          });
-        } catch {
-          // Ignore network errors in local mode
-        }
 
         return {
           success: true,

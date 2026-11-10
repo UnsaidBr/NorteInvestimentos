@@ -28,7 +28,7 @@ import {
 export const DividendCalendarPage: React.FC = () => {
   usePageMeta(
     'Calendário de Dividendos B3',
-    'Acompanhe as datas-com, datas de pagamento, dividendos, JCP e rendimentos de FIIs agendados na bolsa brasileira em tempo real.'
+    'Acompanhe as datas-com, datas de pagamento, dividendos, JCP e rendimentos de FIIs agendados na bolsa brasileira.'
   );
 
   const { marketState } = useMarket();
@@ -266,7 +266,7 @@ export const DividendCalendarPage: React.FC = () => {
             <div>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-mono font-bold text-[#34d399]">
-                  R$ {formatBRL(stats.highestRate.rate)}
+                  {formatBRL(stats.highestRate.rate)}
                 </span>
                 <span className="text-xs font-mono text-[#a39a8c]">
                   por cota ({stats.highestRate.ticker})
@@ -420,7 +420,7 @@ export const DividendCalendarPage: React.FC = () => {
         {isLoading ? (
           <div className="py-20 text-center text-xs font-mono text-[#8c8273]">
             <div className="w-8 h-8 border-2 border-[#d4af6a] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <span>Consultando agenda oficial de proventos da B3...</span>
+            <span>Consultando agenda de proventos...</span>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="py-16 text-center text-sm text-[#8c8273]">
@@ -540,7 +540,7 @@ export const DividendCalendarPage: React.FC = () => {
 
                       {/* Rate */}
                       <td className="py-3.5 px-4 text-right font-mono text-xs font-bold text-[#34d399]">
-                        R$ {formatBRL(item.rate)}
+                        {formatBRL(item.rate)}
                       </td>
 
                       {/* Yield Approx */}

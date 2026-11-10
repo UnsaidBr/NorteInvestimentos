@@ -91,7 +91,7 @@ export const PlansPage: React.FC = () => {
       items: [
         {
           name: 'Ativos Favoritos Salvos',
-          desc: 'Acompanhe cotações em tempo real e variações em um painel único.',
+          desc: 'Acompanhe cotações atualizadas a cada 60 segundos e variações em um painel único.',
           free: 'Até 5 ativos',
           premium: 'Ilimitados',
           highlight: true,

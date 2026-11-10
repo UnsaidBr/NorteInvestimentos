@@ -356,7 +356,7 @@ export const StockChartModal: React.FC<StockChartModalProps> = ({
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#6e675c] font-mono">
-            <span>Histórico oficial brapi.dev / Pregão B3 • Abertura sinalizada em linha pontilhada</span>
+            <span>Histórico via brapi.dev (dados da B3) • Abertura sinalizada em linha pontilhada</span>
             <span className="text-[#d4af6a]">B3 Brasil, Bolsa, Balcão</span>
           </div>
         </div>

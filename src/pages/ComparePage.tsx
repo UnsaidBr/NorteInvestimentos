@@ -471,7 +471,7 @@ export const ComparePage: React.FC = () => {
                               </span>
                             </div>
                             <span className="font-mono text-[11px] text-[#f0d9a8]">
-                              R$ {formatBRL(stock.price)}
+                              {formatBRL(stock.price)}
                             </span>
                           </button>
                         ))
@@ -653,7 +653,7 @@ export const ComparePage: React.FC = () => {
                                   )}
                                   {typeof real === 'number' && (
                                     <span className="text-[10px] text-[#8c8273] block">
-                                      R$ {formatBRL(real)}
+                                      {formatBRL(real)}
                                     </span>
                                   )}
                                 </div>

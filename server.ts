@@ -2,10 +2,18 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
 dotenv.config();
+
+// `npm start` passa --prod: garante modo produção mesmo se NODE_ENV não estiver definido
+// (sem isso o servidor subiria o Vite de desenvolvimento e exporia /diagnostico).
+if (process.argv.includes('--prod')) {
+  process.env.NODE_ENV = 'production';
+}
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,7 +21,95 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// Atrás de proxy (Render, Railway, Cloud Run): usa o IP real do visitante
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+app.use(express.json({ limit: '20kb' }));
+
+// Cabeçalhos básicos de segurança
+app.use((_req: Request, res: Response, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  next();
+});
+
+// ---------------------------------------------------------------------------
+// Limite de requisições por IP (em memória, janela deslizante simples)
+// ---------------------------------------------------------------------------
+function createRateLimiter(maxRequests: number, windowMs: number) {
+  const hits = new Map<string, number[]>();
+  setInterval(() => {
+    const cutoff = Date.now() - windowMs;
+    for (const [key, list] of hits) {
+      const fresh = list.filter((t) => t > cutoff);
+      if (fresh.length === 0) hits.delete(key);
+      else hits.set(key, fresh);
+    }
+  }, windowMs).unref();
+
+  return (req: Request, res: Response, next: () => void) => {
+    const key = req.ip || 'unknown';
+    const now = Date.now();
+    const list = (hits.get(key) || []).filter((t) => t > now - windowMs);
+    if (list.length >= maxRequests) {
+      res.setHeader('Retry-After', String(Math.ceil(windowMs / 1000)));
+      return res.status(429).json({ error: 'Muitas requisições. Tente novamente em alguns minutos.' });
+    }
+    list.push(now);
+    hits.set(key, list);
+    next();
+  };
+}
+
+// IA: 10 explicações por IP a cada 10 minutos (protege a cota do Gemini)
+const aiRateLimit = createRateLimiter(10, 10 * 60 * 1000);
+// Formulários (e-mail, lista de espera, contato): 8 envios por IP a cada 10 minutos
+const formRateLimit = createRateLimiter(8, 10 * 60 * 1000);
+
+// ---------------------------------------------------------------------------
+// Supabase (REST, sem dependências extras). Variáveis: SUPABASE_URL e
+// SUPABASE_SERVICE_ROLE_KEY (somente no servidor, nunca no navegador).
+// ---------------------------------------------------------------------------
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
+
+type SupabaseResult = { ok: boolean; duplicate?: boolean; error?: string };
+
+async function supabaseInsert(table: string, row: Record<string, unknown>): Promise<SupabaseResult> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(row),
+    });
+    if (res.ok) return { ok: true };
+    // 409 / código 23505 = violação de chave única (e-mail já cadastrado)
+    const text = await res.text();
+    if (res.status === 409 || text.includes('23505')) return { ok: true, duplicate: true };
+    console.error(`[Supabase] Falha ao inserir em ${table}: HTTP ${res.status}`);
+    return { ok: false, error: `HTTP ${res.status}` };
+  } catch (err: any) {
+    console.error(`[Supabase] Erro de rede em ${table}:`, err?.message || err);
+    return { ok: false, error: 'network' };
+  }
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function maskEmail(email: string): string {
+  const [user, domain] = email.split('@');
+  return `${(user || '').slice(0, 2)}***@${domain || ''}`;
+}
+
+const STORAGE_UNAVAILABLE_MSG =
+  'Cadastro temporariamente indisponível. Tente novamente em alguns minutos.';
 
 // Initialize Gemini Client server-side
 const apiKey = process.env.GEMINI_API_KEY || '';
@@ -60,43 +156,57 @@ interface SubscriberRecord {
 const subscribers: SubscriberRecord[] = [];
 
 // Endpoint: Newsletter Subscription with consent
-app.post('/api/subscribe', (req: Request, res: Response) => {
-  const { email, consent } = req.body;
+app.post('/api/subscribe', formRateLimit, async (req: Request, res: Response) => {
+  const { email, consent } = req.body || {};
 
-  if (!email || typeof email !== 'string' || !email.includes('@') || !email.includes('.')) {
+  if (!email || typeof email !== 'string' || email.length > 254 || !EMAIL_REGEX.test(email.trim())) {
     return res.status(400).json({ error: 'Por favor, informe um endereço de e-mail válido.' });
   }
 
-  if (!consent) {
+  if (consent !== true) {
     return res.status(400).json({
       error: 'É obrigatório concordar com o recebimento de e-mails e a Política de Privacidade.',
     });
   }
 
   const normalized = email.toLowerCase().trim();
-  const alreadySubscribed = subscribers.some((s) => s.email === normalized);
+  const consentedAt = new Date().toISOString();
 
-  if (alreadySubscribed) {
+  if (supabaseConfigured) {
+    const result = await supabaseInsert('subscribers', { email: normalized, consented_at: consentedAt });
+    if (!result.ok) return res.status(503).json({ error: STORAGE_UNAVAILABLE_MSG });
+    if (result.duplicate) {
+      return res.json({
+        success: true,
+        message: 'Este e-mail já está cadastrado em nosso Radar Semanal.',
+        alreadySubscribed: true,
+      });
+    }
+    console.log(`[Newsletter] Novo inscrito: ${maskEmail(normalized)}`);
+    return res.json({
+      success: true,
+      message: 'Inscrição realizada com sucesso! Você receberá nosso radar semanal.',
+    });
+  }
+
+  // Sem Supabase: em produção NÃO finge sucesso (o e-mail seria perdido)
+  if (IS_PRODUCTION) {
+    return res.status(503).json({ error: STORAGE_UNAVAILABLE_MSG });
+  }
+
+  // Apenas desenvolvimento: guarda em memória para testar a interface
+  if (subscribers.some((s) => s.email === normalized)) {
     return res.json({
       success: true,
       message: 'Este e-mail já está cadastrado em nosso Radar Semanal.',
       alreadySubscribed: true,
     });
   }
-
-  const newSubscriber: SubscriberRecord = {
-    email: normalized,
-    consentedAt: new Date().toISOString(),
-    ip: req.ip,
-  };
-
-  subscribers.push(newSubscriber);
-  console.log(`[Newsletter Subscribe] Novo inscrito registrado: ${normalized}`);
-
+  subscribers.push({ email: normalized, consentedAt });
+  console.log(`[Newsletter DEV] Inscrito (memória, Supabase não configurado): ${maskEmail(normalized)}`);
   return res.json({
     success: true,
-    message: 'Inscrição realizada com sucesso! Você receberá nosso radar semanal.',
-    totalSubscribers: subscribers.length,
+    message: 'Inscrição realizada com sucesso! (modo desenvolvimento, sem persistência)',
   });
 });
 
@@ -517,11 +627,22 @@ async function fetchBcbMacroData() {
 }
 
 // Endpoint: Explain Stock Movement with Gemini (Regra 5: nunca exibir texto pré-escrito)
-app.post('/api/gemini/explain-stock', async (req: Request, res: Response) => {
-  const { symbol, name, price, changePercent } = req.body;
+app.post('/api/gemini/explain-stock', aiRateLimit, async (req: Request, res: Response) => {
+  const body = req.body || {};
+  const rawSymbol = typeof body.symbol === 'string' ? body.symbol.trim().toUpperCase() : '';
 
-  if (!symbol) {
-    return res.status(400).json({ error: 'Ticker symbol is required' });
+  // Ticker da B3: 4 letras + 1 ou 2 dígitos (ex.: PETR4, BOVA11). Bloqueia texto livre no prompt.
+  if (!/^[A-Z]{4}\d{1,2}$/.test(rawSymbol)) {
+    return res.status(400).json({ error: 'Ticker inválido.' });
+  }
+  const symbol = rawSymbol;
+  // Nome da empresa: só letras, números e pontuação simples (sem quebras de linha), máx. 80 caracteres
+  const name =
+    typeof body.name === 'string' ? body.name.replace(/[^\p{L}\p{N} .&\-/]/gu, '').slice(0, 80) : '';
+  const price = Number(body.price);
+  const changePercent = Number(body.changePercent);
+  if (!Number.isFinite(price) || price <= 0 || price > 1_000_000 || !Number.isFinite(changePercent) || Math.abs(changePercent) > 100) {
+    return res.status(400).json({ error: 'Dados de cotação inválidos.' });
   }
 
   const isPositive = Number(changePercent) >= 0;
@@ -1130,26 +1251,39 @@ app.get('/api/market/dividends', async (req: Request, res: Response) => {
 // Endpoint: Premium Waitlist capture
 const waitlistEntries: Array<{ email: string; featureInterest?: string; createdAt: string }> = [];
 
-app.post('/api/waitlist', (req: Request, res: Response) => {
+app.post('/api/waitlist', formRateLimit, async (req: Request, res: Response) => {
   const { email, featureInterest } = req.body || {};
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
+  if (!email || typeof email !== 'string' || email.length > 254 || !EMAIL_REGEX.test(email.trim())) {
     return res.status(400).json({ error: 'E-mail inválido' });
   }
 
   const cleanEmail = email.trim().toLowerCase();
-  const entry = {
-    email: cleanEmail,
-    featureInterest: featureInterest || 'Geral',
-    createdAt: new Date().toISOString(),
-  };
+  const interest =
+    typeof featureInterest === 'string' && featureInterest.trim()
+      ? featureInterest.trim().slice(0, 100)
+      : 'Geral';
+  const createdAt = new Date().toISOString();
 
-  waitlistEntries.push(entry);
-  console.log(`[WAITLIST] Novo usuário registrado: ${cleanEmail} (Interesse: ${entry.featureInterest})`);
+  if (supabaseConfigured) {
+    const result = await supabaseInsert('waitlist', {
+      email: cleanEmail,
+      feature_interest: interest,
+      created_at: createdAt,
+    });
+    if (!result.ok) return res.status(503).json({ error: STORAGE_UNAVAILABLE_MSG });
+    console.log(`[WAITLIST] Novo registro: ${maskEmail(cleanEmail)} (Interesse: ${interest})`);
+    return res.json({ success: true, message: 'Registrado com sucesso na lista de espera Premium' });
+  }
 
+  if (IS_PRODUCTION) {
+    return res.status(503).json({ error: STORAGE_UNAVAILABLE_MSG });
+  }
+
+  waitlistEntries.push({ email: cleanEmail, featureInterest: interest, createdAt });
+  console.log(`[WAITLIST DEV] Registro em memória: ${maskEmail(cleanEmail)} (Interesse: ${interest})`);
   return res.json({
     success: true,
-    message: 'Registrado com sucesso na lista de espera Premium',
-    totalEntries: waitlistEntries.length,
+    message: 'Registrado com sucesso na lista de espera Premium (modo desenvolvimento)',
   });
 });
 
@@ -1165,14 +1299,14 @@ interface ContactSubmission {
 
 const contactSubmissions: ContactSubmission[] = [];
 
-app.post('/api/contact', (req: Request, res: Response) => {
+app.post('/api/contact', formRateLimit, async (req: Request, res: Response) => {
   const { name, email, subject, message } = req.body || {};
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Por favor, informe seu nome.' });
   }
 
-  if (!email || typeof email !== 'string' || !email.includes('@') || !email.includes('.')) {
+  if (!email || typeof email !== 'string' || email.length > 254 || !EMAIL_REGEX.test(email.trim())) {
     return res.status(400).json({ error: 'Por favor, informe um endereço de e-mail válido.' });
   }
 
@@ -1189,8 +1323,21 @@ app.post('/api/contact', (req: Request, res: Response) => {
     createdAt: new Date().toISOString(),
   };
 
-  contactSubmissions.push(cleanEntry);
-  console.log(`[CONTATO] Nova mensagem de ${cleanEntry.name} <${cleanEntry.email}> - Assunto: ${cleanEntry.subject}`);
+  if (supabaseConfigured) {
+    const result = await supabaseInsert('contact_messages', {
+      name: cleanEntry.name,
+      email: cleanEntry.email,
+      subject: cleanEntry.subject,
+      message: cleanEntry.message,
+      created_at: cleanEntry.createdAt,
+    });
+    if (!result.ok) return res.status(503).json({ error: STORAGE_UNAVAILABLE_MSG });
+  } else if (IS_PRODUCTION) {
+    return res.status(503).json({ error: STORAGE_UNAVAILABLE_MSG });
+  } else {
+    contactSubmissions.push(cleanEntry);
+  }
+  console.log(`[CONTATO] Nova mensagem recebida (${cleanEntry.subject}) de ${maskEmail(cleanEntry.email)}`);
 
   return res.json({
     success: true,
@@ -2053,7 +2200,7 @@ app.post('/api/diagnostic/probe', async (_req: Request, res: Response) => {
 
 // Setup Vite middleware in dev or static files in production
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (!IS_PRODUCTION) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -2061,6 +2208,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
+    if (!fs.existsSync(path.join(__dirname, 'dist', 'index.html'))) {
+      console.error('Pasta dist/ não encontrada. Rode "npm run build" antes de "npm start".');
+      process.exit(1);
+    }
     app.use(express.static(path.join(__dirname, 'dist')));
     app.get('*', (_req, res) => {
       res.sendFile(path.join(__dirname, 'dist', 'index.html'));

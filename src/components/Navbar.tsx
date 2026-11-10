@@ -107,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   // Recursos de conteúdo e educação no dropdown
   const contentLinks = [
     { label: 'Mini-Aulas', href: '/aprender', icon: GraduationCap, desc: 'Conceitos didáticos para iniciantes' },
-    { label: 'Radar de Notícias RSS', href: '/noticias', icon: Newspaper, desc: 'Manchetes da economia em tempo real' },
+    { label: 'Radar de Notícias RSS', href: '/noticias', icon: Newspaper, desc: 'Manchetes da economia (atualizadas a cada 15 min)' },
     { label: 'Glossário Financeiro', href: '/glossario', icon: BookOpen, desc: 'Dicionário A-Z descomplicado' },
     { label: 'Síntese Algorítmica IA', href: '/ia', icon: Sparkles, desc: 'Como o modelo traduz o mercado' },
     { label: 'Metodologia de Cálculo', href: '/metodologia', icon: FileText, desc: 'Fontes de dados e fórmulas' },
