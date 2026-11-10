@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { PageHeader } from '../components/PageHeader';
+import { StaticReferenceNotice } from '../components/StaticReferenceNotice';
 import { APP_NAME } from '../constants/config';
 import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../hooks/usePortfolio';
@@ -101,6 +102,7 @@ export const PortfolioPage: React.FC = () => {
         badge="Ferramenta Analítica"
         breadcrumbs={[{ label: 'Minha Carteira' }]}
       />
+      <StaticReferenceNotice what="A valorização da carteira e a lista de ativos para cadastro" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
         

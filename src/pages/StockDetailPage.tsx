@@ -37,6 +37,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { usePlan } from '../context/PlanContext';
+import { IndicatorExplainer } from '../components/IndicatorExplainer';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -1129,6 +1130,16 @@ export const StockDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* BLOCO: ENTENDA OS INDICADORES (educacional, valores reais da API) */}
+      <IndicatorExplainer
+        ticker={stockDetail.ticker}
+        pl={stockDetail.pl}
+        pvp={stockDetail.pvp}
+        dividendYield={stockDetail.dividendYield}
+        roe={stockDetail.roe}
+        marketCap={stockDetail.marketCap}
+      />
 
       {/* BLOCO: COMPARE COM O SETOR */}
       {sectorComparison && (
