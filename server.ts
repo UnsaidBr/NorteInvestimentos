@@ -111,6 +111,10 @@ function maskEmail(email: string): string {
 const STORAGE_UNAVAILABLE_MSG =
   'Cadastro temporariamente indisponível. Tente novamente em alguns minutos.';
 
+// Modelos da IA: configure GEMINI_MODEL no .env para trocar sem mexer no código
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const GEMINI_FALLBACK_MODEL = 'gemini-flash-latest';
+
 // Initialize Gemini Client server-side
 const apiKey = process.env.GEMINI_API_KEY || '';
 const ai = apiKey
@@ -672,14 +676,25 @@ REGRAS OBRIGATÓRIAS (Conformidade CVM / Anbima):
 5. Deixe claro que são hipóteses gerais de mercado e não certezas absolutas.
 6. Não use asteriscos de markdown excessivos.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+    const request = {
       contents: prompt,
       config: {
         systemInstruction:
           'Você é um educador financeiro do portal NorteInvest. Seu papel é educar iniciantes com clareza, neutralidade, ética e sem promessas ou recomendações de compra/venda.',
       },
-    });
+    };
+
+    // Modelo configurável (GEMINI_MODEL). Se o modelo não existir, tenta o alias estável.
+    let response;
+    try {
+      response = await ai.models.generateContent({ model: GEMINI_MODEL, ...request });
+    } catch (primaryError: any) {
+      const msg = String(primaryError?.message || primaryError);
+      const modelProblem = /not found|404|NOT_FOUND|is not supported|unsupported/i.test(msg);
+      if (!modelProblem || GEMINI_MODEL === GEMINI_FALLBACK_MODEL) throw primaryError;
+      console.warn(`[Gemini] Modelo "${GEMINI_MODEL}" indisponível (${msg.slice(0, 120)}). Tentando "${GEMINI_FALLBACK_MODEL}".`);
+      response = await ai.models.generateContent({ model: GEMINI_FALLBACK_MODEL, ...request });
+    }
 
     const explanation = response.text?.trim() || 'Explicação por IA indisponível no momento. Tente novamente em instantes.';
 
