@@ -30,3 +30,106 @@ create table if not exists public.contact_messages (
 alter table public.subscribers enable row level security;
 alter table public.waitlist enable row level security;
 alter table public.contact_messages enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Carteira de Investimentos & Metas em Tempo Real (Supabase Realtime)
+-- Permite que o frontend escute e sincronize alterações de ativos e metas
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.portfolio_positions (
+  id text primary key,
+  ticker text not null,
+  name text not null,
+  category text not null default 'acao',
+  quantity numeric not null default 0,
+  average_price numeric not null default 0,
+  user_id text default 'anonymous',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_portfolio_positions_ticker on public.portfolio_positions (ticker);
+create index if not exists idx_portfolio_positions_user on public.portfolio_positions (user_id);
+
+create table if not exists public.portfolio_goals (
+  id text primary key default 'default_goal',
+  goal_amount numeric not null default 2500,
+  manual_deposits numeric not null default 0,
+  month_key text not null,
+  user_id text default 'anonymous',
+  updated_at timestamptz not null default now()
+);
+
+-- Políticas RLS para tabelas da carteira (acesso público anônimo permitido por padrão)
+alter table public.portfolio_positions enable row level security;
+alter table public.portfolio_goals enable row level security;
+
+create policy "Permitir leitura pública das posições da carteira"
+  on public.portfolio_positions for select
+  using (true);
+
+create policy "Permitir escrita pública das posições da carteira"
+  on public.portfolio_positions for all
+  using (true);
+
+create policy "Permitir leitura pública das metas da carteira"
+  on public.portfolio_goals for select
+  using (true);
+
+create policy "Permitir escrita pública das metas da carteira"
+  on public.portfolio_goals for all
+  using (true);
+
+-- ---------------------------------------------------------------------------
+-- Notificações de Resumo de Rebalanceamento via E-mail
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.rebalance_notifications (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  total_current_value numeric not null default 0,
+  contribution_amount numeric not null default 0,
+  total_projected_value numeric not null default 0,
+  rebalance_summary jsonb not null default '{}'::jsonb,
+  status text not null default 'sent',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_rebalance_notifications_email on public.rebalance_notifications (lower(email));
+create index if not exists idx_rebalance_notifications_created on public.rebalance_notifications (created_at desc);
+
+alter table public.rebalance_notifications enable row level security;
+
+create policy "Permitir inserção de notificações de rebalanceamento"
+  on public.rebalance_notifications for insert
+  with check (true);
+
+create policy "Permitir leitura de notificações de rebalanceamento"
+  on public.rebalance_notifications for select
+  using (true);
+
+-- Habilitar publicação no canal Realtime do Supabase
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'portfolio_positions'
+  ) then
+    alter publication supabase_realtime add table public.portfolio_positions;
+  end if;
+
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'portfolio_goals'
+  ) then
+    alter publication supabase_realtime add table public.portfolio_goals;
+  end if;
+
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'rebalance_notifications'
+  ) then
+    alter publication supabase_realtime add table public.rebalance_notifications;
+  end if;
+end;
+$$;

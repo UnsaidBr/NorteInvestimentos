@@ -4,6 +4,10 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { PageHeader } from '../components/PageHeader';
 import { NewsletterCta } from '../components/NewsletterCta';
 import { LEARN_TOPICS } from '../data/learningContent';
+import { useLessonProgress } from '../hooks/useLessonProgress';
+import { LessonInteractiveTool } from '../components/LessonInteractiveTool';
+import { LessonQuizWidget } from '../components/LessonQuizWidget';
+import { LessonAudioPlayer } from '../components/LessonAudioPlayer';
 import {
   Clock,
   ArrowLeft,
@@ -11,10 +15,14 @@ import {
   ShieldAlert,
   CheckCircle2,
   BookOpen,
+  Sparkles,
+  Award,
+  Zap,
 } from 'lucide-react';
 
 export const LessonDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const { isLessonCompleted, toggleLessonCompleted } = useLessonProgress(LEARN_TOPICS.length);
 
   const currentIndex = LEARN_TOPICS.findIndex((t) => t.id === slug);
   const topic = LEARN_TOPICS[currentIndex];
@@ -28,12 +36,13 @@ export const LessonDetailPage: React.FC = () => {
     return <Navigate to="/aprender" replace />;
   }
 
+  const isCompleted = isLessonCompleted(topic.id);
   const prevTopic = currentIndex > 0 ? LEARN_TOPICS[currentIndex - 1] : null;
   const nextTopic =
     currentIndex < LEARN_TOPICS.length - 1 ? LEARN_TOPICS[currentIndex + 1] : null;
 
   return (
-    <div>
+    <div className="bg-[#0b0a09] text-[#f5efe6] min-h-screen">
       <PageHeader
         badge={topic.category}
         badgeColor="gold"
@@ -44,11 +53,31 @@ export const LessonDetailPage: React.FC = () => {
           { label: topic.title },
         ]}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#141210] border border-[#d4af6a]/20 text-xs font-mono text-[#a39a8c]">
+        <div className="flex flex-wrap items-center gap-2.5 font-mono">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#141210] border border-[#d4af6a]/20 text-xs text-[#a39a8c]">
             <Clock className="w-3.5 h-3.5 text-[#d4af6a]" />
             <span>Leitura: {topic.readTime}</span>
           </div>
+
+          <a
+            href="#quiz-rapido"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#d4af6a]/15 hover:bg-[#d4af6a]/25 border border-[#d4af6a]/30 text-xs font-semibold text-[#f0d9a8] transition-colors cursor-pointer"
+          >
+            <Zap className="w-3.5 h-3.5 text-[#d4af6a]" />
+            <span>Quiz Rápido ({topic.quiz?.length || 3}Q)</span>
+          </a>
+
+          <button
+            onClick={() => toggleLessonCompleted(topic.id)}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] text-xs font-semibold transition-all cursor-pointer ${
+              isCompleted
+                ? 'bg-[#3ddc97]/20 border border-[#3ddc97]/40 text-[#3ddc97]'
+                : 'bg-[#141210] hover:bg-[#1c1916] border border-[#d4af6a]/20 text-[#c2b9ac]'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>{isCompleted ? 'Aula Concluída ✓' : 'Marcar como Concluída'}</span>
+          </button>
 
           <Link
             to="/aprender"
@@ -63,6 +92,24 @@ export const LessonDetailPage: React.FC = () => {
       <article className="py-12 sm:py-20 bg-[#0b0a09]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           
+          {/* Barra de Áudio Player e Recursos */}
+          <div className="p-4 rounded-[14px] bg-[#141210] border border-[#d4af6a]/20 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+            <LessonAudioPlayer
+              title={topic.title}
+              intro={topic.content.intro}
+              sections={topic.content.sections}
+              summary={topic.content.summary}
+            />
+
+            <a
+              href="#quiz-rapido"
+              className="text-xs font-mono text-[#d4af6a] hover:text-[#f0d9a8] flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <Zap className="w-3 h-3" />
+              <span>{topic.quiz?.length || 3} perguntas de Quiz Rápido ao final ↓</span>
+            </a>
+          </div>
+
           {/* Article Intro */}
           <div className="p-6 sm:p-8 rounded-[16px] bg-[#141210] border border-[#d4af6a]/15 shadow-sm">
             <div className="flex items-center gap-2 text-xs font-mono font-semibold text-[#d4af6a] uppercase tracking-wider mb-3">
@@ -93,16 +140,64 @@ export const LessonDetailPage: React.FC = () => {
                 </p>
 
                 {section.highlight && (
-                  <div className="p-4 rounded-[10px] bg-[#1c1916] border-l-4 border-[#d4af6a] text-[#f5efe6] text-xs sm:text-sm font-medium leading-relaxed">
+                  <div className="p-4 rounded-[10px] bg-[#1c1916] border-l-4 border-[#d4af6a] text-[#f5efe6] text-xs sm:text-sm font-medium leading-relaxed font-sans">
                     <strong className="text-[#f0d9a8] block mb-1 font-mono uppercase text-[10px] tracking-wider">
                       Ponto-chave para fixar:
                     </strong>
                     {section.highlight}
                   </div>
                 )}
+
+                {section.breakdown && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 font-mono">
+                    {section.breakdown.map((item, bIdx) => (
+                      <div
+                        key={bIdx}
+                        className="p-3.5 rounded-[10px] bg-[#1c1916] border border-[#d4af6a]/15 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-[#f5efe6]">
+                            {item.label}
+                          </span>
+                          {item.badge && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#d4af6a]/15 text-[#f0d9a8] font-bold">
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#8c8273] font-sans leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             ))}
           </div>
+
+          {/* SIMULADOR PRÁTICO EMBUTIDO */}
+          {topic.interactiveToolId && (
+            <div>
+              <LessonInteractiveTool toolId={topic.interactiveToolId} />
+            </div>
+          )}
+
+          {/* Estudo de Caso Real do Mercado */}
+          {topic.content.realCase && (
+            <div className="p-6 sm:p-8 rounded-[16px] bg-gradient-to-r from-[#1c1916] via-[#141210] to-[#1a150c] border border-[#d4af6a]/30 space-y-3 font-mono">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#f0d9a8] uppercase tracking-wider">
+                <Sparkles className="w-4 h-4 text-[#d4af6a]" />
+                <span>{topic.content.realCase.title}</span>
+              </div>
+              <p className="text-sm sm:text-base text-[#c2b9ac] font-sans leading-relaxed">
+                {topic.content.realCase.description}
+              </p>
+              <div className="pt-2 border-t border-[#d4af6a]/20 text-xs text-[#d4af6a]">
+                <strong>Lição prática do investidor:</strong> {topic.content.realCase.takeaway}
+              </div>
+            </div>
+          )}
 
           {/* Key Takeaways Summary Card */}
           <div className="p-6 sm:p-8 rounded-[16px] bg-gradient-to-r from-[#d4af6a]/12 via-[#141210] to-[#d4af6a]/5 border border-[#d4af6a]/30 space-y-3">
@@ -115,11 +210,34 @@ export const LessonDetailPage: React.FC = () => {
             </p>
           </div>
 
+          {/* QUIZ RÁPIDO AO FINAL DA MINI-AULA */}
+          {topic.quiz && topic.quiz.length > 0 && (
+            <section className="space-y-4 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 font-mono">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#d4af6a] uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-[#d4af6a]" />
+                  <span>Avaliação Final da Mini-Aula</span>
+                </div>
+                <span className="text-[11px] text-[#8c8273]">
+                  Feedback imediato e pontuação para consolidar o conhecimento
+                </span>
+              </div>
+
+              <LessonQuizWidget
+                quiz={topic.quiz}
+                lessonId={topic.id}
+                onComplete={() => {
+                  if (!isCompleted) toggleLessonCompleted(topic.id);
+                }}
+              />
+            </section>
+          )}
+
           {/* Regulatory & Risk Caution Card */}
           <div className="p-5 sm:p-6 rounded-[14px] bg-[#141210] border border-[#d4af6a]/20 flex items-start gap-3.5 text-xs text-[#a39a8c]">
             <ShieldAlert className="w-5 h-5 text-[#d4af6a] shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <strong className="text-[#f0d9a8] font-semibold block text-sm">
+            <div className="space-y-1 font-sans">
+              <strong className="text-[#f0d9a8] font-semibold block text-sm font-mono">
                 Atenção ao risco financeiro:
               </strong>
               <p className="leading-relaxed">

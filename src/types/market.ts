@@ -131,6 +131,20 @@ export interface MacroIndicators {
   };
 }
 
+export interface LessonQuizQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+export interface LessonRealCase {
+  title: string;
+  ticker?: string;
+  description: string;
+  takeaway: string;
+}
+
 export interface LearnTopic {
   id: string;
   title: string;
@@ -138,16 +152,24 @@ export interface LearnTopic {
   category: string;
   readTime: string;
   iconName: string;
+  interactiveToolId?: 'socio-b3' | 'termometro-cdi' | 'bola-de-neve' | 'balanca-risco' | 'resiliencia-carteira' | 'custo-panico';
   content: {
     intro: string;
     sections: {
       heading: string;
       text: string;
       highlight?: string;
+      breakdown?: {
+        label: string;
+        description: string;
+        badge?: string;
+      }[];
     }[];
+    realCase?: LessonRealCase;
     summary: string;
     cautionNote: string;
   };
+  quiz?: LessonQuizQuestion[];
 }
 
 export interface SimulatorParams {

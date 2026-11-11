@@ -4,6 +4,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { PageHeader } from '../components/PageHeader';
 import { NewsletterCta } from '../components/NewsletterCta';
 import { LEARN_TOPICS } from '../data/learningContent';
+import { useLessonProgress } from '../hooks/useLessonProgress';
 import {
   GraduationCap,
   Clock,
@@ -16,16 +17,21 @@ import {
   PieChart,
   AlertTriangle,
   BookOpen,
+  CheckCircle2,
+  Sparkles,
+  HelpCircle,
 } from 'lucide-react';
 
 export const LearnIndexPage: React.FC = () => {
   usePageMeta(
-    'Educação Financeira para Iniciantes | Trilha B3 e Renda Fixa | NorteInvest',
-    'Aprenda a investir com mini-aulas diretas e sem jargões. Entenda ações, proventos, taxa Selic, CDI, diversificação e gestão de riscos no mercado brasileiro.'
+    'Educação Financeira Interativa para Iniciantes | Trilha B3 e Renda Fixa | NorteInvest',
+    'Aprenda a investir com mini-aulas diretas, simuladores práticos, estudos de caso reais da B3 e desafios de fixação sem termos difíceis.'
   );
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
+  const { completedCount, progressPercent, isLessonCompleted } =
+    useLessonProgress(LEARN_TOPICS.length);
 
   const categories = useMemo(() => {
     const set = new Set(LEARN_TOPICS.map((t) => t.category));
@@ -52,13 +58,13 @@ export const LearnIndexPage: React.FC = () => {
       case 'Building2':
         return <Building2 className="w-5 h-5 text-[#d4af6a]" />;
       case 'Percent':
-        return <Percent className="w-5 h-5 text-[#d4af6a]" />;
+        return <Percent className="w-5 h-5 text-[#3ddc97]" />;
       case 'Coins':
-        return <Coins className="w-5 h-5 text-[#d4af6a]" />;
+        return <Coins className="w-5 h-5 text-amber-400" />;
       case 'Scale':
-        return <Scale className="w-5 h-5 text-[#d4af6a]" />;
+        return <Scale className="w-5 h-5 text-cyan-400" />;
       case 'PieChart':
-        return <PieChart className="w-5 h-5 text-[#d4af6a]" />;
+        return <PieChart className="w-5 h-5 text-purple-400" />;
       case 'AlertTriangle':
         return <AlertTriangle className="w-5 h-5 text-[#ff5c6c]" />;
       default:
@@ -69,17 +75,21 @@ export const LearnIndexPage: React.FC = () => {
   return (
     <div>
       <PageHeader
-        badge="Trilha Educativa"
+        badge="Trilha Educativa Interativa"
         badgeColor="gold"
         title="Educação Financeira"
         titleHighlight="Descomplicada"
-        subtitle="Domine os fundamentos do mercado financeiro brasileiro em leituras de 3 a 4 minutos. Sem fórmulas obscuras, sem promessas e sem 'economês'."
+        subtitle="Domine os fundamentos do mercado financeiro brasileiro com simuladores interativos, estudos de caso e testes práticos em 3 a 4 minutos."
         breadcrumbs={[{ label: 'Aprender' }]}
       >
-        <div className="flex items-center gap-2 px-3.5 py-2 rounded-[10px] bg-[#141210] border border-[#d4af6a]/20 text-xs font-mono">
-          <GraduationCap className="w-4 h-4 text-[#d4af6a]" />
-          <span className="text-[#a39a8c]">Trilha Básica:</span>
-          <strong className="text-[#f5efe6] font-bold">{LEARN_TOPICS.length} mini-aulas</strong>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-[10px] bg-[#141210] border border-[#d4af6a]/20 text-xs font-mono">
+            <GraduationCap className="w-4 h-4 text-[#d4af6a]" />
+            <span className="text-[#a39a8c]">Progresso:</span>
+            <strong className="text-[#f5efe6] font-bold">
+              {completedCount} de {LEARN_TOPICS.length} concluídas ({progressPercent}%)
+            </strong>
+          </div>
         </div>
       </PageHeader>
 
@@ -111,49 +121,79 @@ export const LearnIndexPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar aula ou conceito..."
-                className="w-full pl-10 pr-4 py-2 bg-[#141210] border border-[#d4af6a]/20 focus:border-[#d4af6a] rounded-[10px] text-xs sm:text-sm text-[#f5efe6] placeholder:text-[#6e675c] focus:outline-none transition-colors"
+                className="w-full pl-10 pr-4 py-2 bg-[#141210] border border-[#d4af6a]/20 focus:border-[#d4af6a] rounded-[10px] text-xs sm:text-sm text-[#f5efe6] placeholder:text-[#6e675c] focus:outline-none transition-colors font-mono"
               />
             </div>
           </div>
 
           {/* Lessons Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTopics.map((topic) => (
-              <Link
-                key={topic.id}
-                to={`/aprender/${topic.id}`}
-                className="p-6 sm:p-7 rounded-[14px] bg-[#141210] border border-[#d4af6a]/15 hover:border-[#d4af6a]/40 hover:bg-[#1c1916] transition-all duration-200 shadow-md flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 rounded-[10px] bg-[#1c1916] border border-[#d4af6a]/15 flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-sm">
-                      {getTopicIcon(topic.iconName)}
+            {filteredTopics.map((topic) => {
+              const isCompleted = isLessonCompleted(topic.id);
+
+              return (
+                <Link
+                  key={topic.id}
+                  to={`/aprender/${topic.id}`}
+                  className={`p-6 sm:p-7 rounded-[14px] bg-[#141210] border transition-all duration-200 shadow-md flex flex-col justify-between group ${
+                    isCompleted
+                      ? 'border-[#3ddc97]/40 hover:border-[#3ddc97] hover:bg-[#141812]'
+                      : 'border-[#d4af6a]/15 hover:border-[#d4af6a]/40 hover:bg-[#1c1916]'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-11 h-11 rounded-[10px] bg-[#1c1916] border border-[#d4af6a]/15 flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-sm">
+                        {getTopicIcon(topic.iconName)}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {isCompleted && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#3ddc97] bg-[#3ddc97]/15 px-2 py-0.5 rounded-[4px] border border-[#3ddc97]/30">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Concluída
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-[#1c1916] text-[#a39a8c] border border-[#d4af6a]/15 font-semibold">
+                          {topic.category}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-[#1c1916] text-[#a39a8c] border border-[#d4af6a]/15 font-semibold">
-                      {topic.category}
+
+                    <h3 className="text-lg font-serif font-bold text-[#f5efe6] group-hover:text-[#f0d9a8] transition-colors leading-snug">
+                      {topic.title}
+                    </h3>
+
+                    <p className="text-xs sm:text-sm text-[#a39a8c] mt-2.5 leading-relaxed font-normal">
+                      {topic.subtitle}
+                    </p>
+
+                    {/* Destaques Interativos */}
+                    <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#d4af6a]/10 text-[11px] font-mono">
+                      <span className="inline-flex items-center gap-1 text-[#d4af6a]">
+                        <Sparkles className="w-3 h-3" />
+                        Simulador Prático
+                      </span>
+                      <span className="text-[#8c8273]">·</span>
+                      <span className="inline-flex items-center gap-1 text-[#3ddc97]">
+                        <HelpCircle className="w-3 h-3" />
+                        Quiz
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-[#d4af6a]/10 flex items-center justify-between text-xs text-[#6e675c] font-mono">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#a39a8c]" />
+                      <span className="text-[#a39a8c]">{topic.readTime}</span>
+                    </div>
+                    <span className="font-semibold text-[#d4af6a] group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                      {isCompleted ? 'Revisar aula' : 'Iniciar aula'} <ArrowRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
-
-                  <h3 className="text-lg font-serif font-bold text-[#f5efe6] group-hover:text-[#f0d9a8] transition-colors leading-snug">
-                    {topic.title}
-                  </h3>
-
-                  <p className="text-xs sm:text-sm text-[#a39a8c] mt-2.5 leading-relaxed font-normal">
-                    {topic.subtitle}
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-[#d4af6a]/10 flex items-center justify-between text-xs text-[#6e675c] font-mono">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-[#a39a8c]" />
-                    <span className="text-[#a39a8c]">{topic.readTime}</span>
-                  </div>
-                  <span className="font-semibold text-[#d4af6a] group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                    Ler aula <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
 
         </div>

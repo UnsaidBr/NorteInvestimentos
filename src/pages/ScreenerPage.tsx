@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { PageHeader } from '../components/PageHeader';
+import { StaticReferenceNotice } from '../components/StaticReferenceNotice';
 import { APP_NAME } from '../constants/config';
 import { FundamentalStock, ScreenerFilterState } from '../types/fundamental';
 import { getScreenerStocks } from '../services/fundamentalService';
@@ -158,6 +159,7 @@ export const ScreenerPage: React.FC = () => {
           <span>Ir para Painel de FIIs →</span>
         </Link>
       </PageHeader>
+      <StaticReferenceNotice what="O Rastreador (incluindo as fórmulas de Graham, Bazin e Greenblatt)" />
 
       <div className="py-12 sm:py-16 bg-[#0b0a09]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">

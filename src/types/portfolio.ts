@@ -54,3 +54,32 @@ export interface PortfolioSummary {
   allocationByClass: AllocationByClass[];
   monthlyProjections: MonthlyDividendProjection[];
 }
+
+export type RebalanceTargetAllocation = Record<AssetCategory, number>;
+
+export interface RebalanceClassItem {
+  category: AssetCategory;
+  label: string;
+  color: string;
+  currentValue: number;
+  currentPercent: number;
+  targetPercent: number;
+  targetValue: number;
+  differenceValue: number;
+  suggestedContribution: number;
+  projectedValue: number;
+  projectedPercent: number;
+  status: 'underweight' | 'balanced' | 'overweight';
+}
+
+export interface RebalanceSimulationResult {
+  totalCurrentValue: number;
+  contributionAmount: number;
+  totalProjectedValue: number;
+  classes: RebalanceClassItem[];
+  isTargetValid: boolean;
+  targetSum: number;
+  underweightCount: number;
+  overweightCount: number;
+}
+

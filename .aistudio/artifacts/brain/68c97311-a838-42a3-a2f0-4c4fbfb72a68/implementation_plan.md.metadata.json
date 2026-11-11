@@ -1,6 +1,0 @@
-{
-  "summary":  "Plano de implementação detalhado para o Gerenciador de Carteira de Investimentos do NorteInvest (estilo Investidor10), incluindo projeção dinâmica de dividendos mensais, gráfico de alocação patrimonial por classes (Ações, FIIs, Renda Fixa/CDI e Cripto), controle de aportes e preço médio com persistência no navegador via localStorage.",
-  "updatedAt":  "2026-11-09T02:33:41.765275267Z",
-  "requestFeedback":  true,
-  "userFacing":  true
-}

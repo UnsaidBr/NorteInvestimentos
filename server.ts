@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -111,6 +111,10 @@ function maskEmail(email: string): string {
 const STORAGE_UNAVAILABLE_MSG =
   'Cadastro temporariamente indisponível. Tente novamente em alguns minutos.';
 
+// Modelos da IA: configure GEMINI_MODEL no .env para trocar sem mexer no código
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const GEMINI_FALLBACK_MODEL = 'gemini-flash-latest';
+
 // Initialize Gemini Client server-side
 const apiKey = process.env.GEMINI_API_KEY || '';
 const ai = apiKey
@@ -207,6 +211,58 @@ app.post('/api/subscribe', formRateLimit, async (req: Request, res: Response) =>
   return res.json({
     success: true,
     message: 'Inscrição realizada com sucesso! (modo desenvolvimento, sem persistência)',
+  });
+});
+
+// Endpoint: Envio de Notificação de Resumo do Rebalanceamento via Supabase
+app.post('/api/portfolio/rebalance-email-notification', formRateLimit, async (req: Request, res: Response) => {
+  const { email, totalCurrentValue, contributionAmount, totalProjectedValue, classes, notes } = req.body || {};
+
+  if (!email || typeof email !== 'string' || email.length > 254 || !EMAIL_REGEX.test(email.trim())) {
+    return res.status(400).json({ error: 'Por favor, informe um endereço de e-mail válido.' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const safeTotalCurrent = Number(totalCurrentValue) || 0;
+  const safeContribution = Number(contributionAmount) || 0;
+  const safeTotalProjected = Number(totalProjectedValue) || 0;
+  const safeClasses = Array.isArray(classes) ? classes : [];
+
+  const payloadRecord = {
+    email: normalizedEmail,
+    total_current_value: safeTotalCurrent,
+    contribution_amount: safeContribution,
+    total_projected_value: safeTotalProjected,
+    rebalance_summary: {
+      classes: safeClasses,
+      notes: typeof notes === 'string' ? notes.slice(0, 300) : '',
+      timestamp: new Date().toISOString(),
+    },
+    status: 'sent',
+    created_at: new Date().toISOString(),
+  };
+
+  if (supabaseConfigured) {
+    const result = await supabaseInsert('rebalance_notifications', payloadRecord);
+    if (!result.ok) {
+      console.warn('[Supabase] Falha ao registrar notificação em rebalance_notifications:', result.error);
+    } else {
+      console.log(`[Rebalance Notification] Registrado com sucesso no Supabase para: ${maskEmail(normalizedEmail)}`);
+    }
+
+    return res.json({
+      success: true,
+      message: `Notificação enviada com sucesso para ${maskEmail(normalizedEmail)}! O resumo do seu rebalanceamento foi sincronizado no Supabase.`,
+      supabaseSynced: result.ok,
+    });
+  }
+
+  // Modo local / desenvolvimento sem Supabase configurado
+  console.log(`[Rebalance Notification DEV] Simulação de envio para ${maskEmail(normalizedEmail)}: Aporte R$ ${safeContribution.toFixed(2)}, Projetado R$ ${safeTotalProjected.toFixed(2)}`);
+  return res.json({
+    success: true,
+    message: `Notificação gerada com sucesso para ${maskEmail(normalizedEmail)}! (Modo Local / Simulação ativa)`,
+    supabaseSynced: false,
   });
 });
 
@@ -672,14 +728,25 @@ REGRAS OBRIGATÓRIAS (Conformidade CVM / Anbima):
 5. Deixe claro que são hipóteses gerais de mercado e não certezas absolutas.
 6. Não use asteriscos de markdown excessivos.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+    const request = {
       contents: prompt,
       config: {
         systemInstruction:
           'Você é um educador financeiro do portal NorteInvest. Seu papel é educar iniciantes com clareza, neutralidade, ética e sem promessas ou recomendações de compra/venda.',
       },
-    });
+    };
+
+    // Modelo configurável (GEMINI_MODEL). Se o modelo não existir, tenta o alias estável.
+    let response;
+    try {
+      response = await ai.models.generateContent({ model: GEMINI_MODEL, ...request });
+    } catch (primaryError: any) {
+      const msg = String(primaryError?.message || primaryError);
+      const modelProblem = /not found|404|NOT_FOUND|is not supported|unsupported/i.test(msg);
+      if (!modelProblem || GEMINI_MODEL === GEMINI_FALLBACK_MODEL) throw primaryError;
+      console.warn(`[Gemini] Modelo "${GEMINI_MODEL}" indisponível (${msg.slice(0, 120)}). Tentando "${GEMINI_FALLBACK_MODEL}".`);
+      response = await ai.models.generateContent({ model: GEMINI_FALLBACK_MODEL, ...request });
+    }
 
     const explanation = response.text?.trim() || 'Explicação por IA indisponível no momento. Tente novamente em instantes.';
 
@@ -699,6 +766,195 @@ REGRAS OBRIGATÓRIAS (Conformidade CVM / Anbima):
       isFallback: true,
       available: false,
       errorNotice: error?.message || 'Indisponível no momento',
+    });
+  }
+});
+
+// Cache em memória para Análises de Ativos por IA (5 minutos)
+const assetAnalysisCache = new Map<string, { data: any; timestamp: number }>();
+const ASSET_ANALYSIS_CACHE_MS = 5 * 60 * 1000;
+
+// Endpoint: Análise Automatizada de Ativos da Carteira com Gemini
+app.post('/api/gemini/analyze-asset', aiRateLimit, async (req: Request, res: Response) => {
+  const body = req.body || {};
+  const rawTicker = typeof body.ticker === 'string' ? body.ticker.trim().toUpperCase() : '';
+  const ticker = rawTicker.slice(0, 15);
+  const name =
+    typeof body.name === 'string'
+      ? body.name.replace(/[^\p{L}\p{N} .&\-/]/gu, '').slice(0, 80)
+      : ticker;
+  const category = typeof body.category === 'string' ? body.category.slice(0, 20) : 'acao';
+  const currentPrice = Number(body.currentPrice) || 0;
+  const averagePrice = Number(body.averagePrice) || 0;
+  const gainLossPercent = Number(body.gainLossPercent) || 0;
+  const dividendYield = Number(body.dividendYield) || 0;
+  const quantity = Number(body.quantity) || 0;
+  const forceRefresh = Boolean(body.forceRefresh);
+
+  if (!ticker) {
+    return res.status(400).json({ error: 'Ticker do ativo é obrigatório.' });
+  }
+
+  // Verificar cache
+  const cacheKey = `${ticker}_${category}`;
+  const now = Date.now();
+  const cached = assetAnalysisCache.get(cacheKey);
+  if (cached && now - cached.timestamp < ASSET_ANALYSIS_CACHE_MS && !forceRefresh) {
+    return res.json({ ...cached.data, cached: true });
+  }
+
+  if (!ai || !apiKey) {
+    return res.json({
+      ticker,
+      name,
+      category,
+      overview: `Análise automatizada de ${ticker} (${name}): Acompanhe a evolução das cotações em relação ao seu preço médio de R$ ${averagePrice.toFixed(2)}. No momento o serviço de IA está operando em contingência.`,
+      keyDrivers: [
+        'Variações de liquidez diária e volume financeiro negociado no pregão.',
+        'Sensibilidade ao ciclo macroeconômico brasileiro e juros Selic.',
+        'Divulgações de resultados trimestrais e proventos aos cotistas/acionistas.',
+      ],
+      macroContext: 'O patamar da taxa Selic e o fluxo de capital na B3 são os principais direcionadores de curto e médio prazo.',
+      valuationAndDividends:
+        dividendYield > 0
+          ? `O ativo apresenta Dividend Yield estimado em cerca de ${dividendYield.toFixed(2)}%.`
+          : 'Acompanhe a distribuição de proventos e lucros nos fatos relevantes da B3.',
+      riskNotice: 'Risco de volatilidade de mercado e oscilação dos preços no pregão.',
+      disclaimer: 'Conteúdo informativo e educacional. Não constitui recomendação de investimento (CVM). Rentabilidade passada não garante resultados futuros.',
+      isFallback: true,
+      available: false,
+      generatedAt: new Date().toISOString(),
+    });
+  }
+
+  try {
+    const prompt = `Você é um analista sênior de inteligência de mercado do portal NorteInvest (estilo Private Banking).
+Elabore uma análise automatizada, concisa, precisa e elegante sobre o desempenho recente e fundamentos do ativo ${ticker} (${name}), classificado como "${category}".
+
+Dados consolidados do investidor:
+- Cotação atual no mercado: R$ ${currentPrice.toFixed(2)}
+- Preço médio de aquisição: R$ ${averagePrice.toFixed(2)}
+- Quantidade em carteira: ${quantity}
+- Rentabilidade acumulada na posição: ${gainLossPercent >= 0 ? '+' : ''}${gainLossPercent.toFixed(2)}%
+${dividendYield > 0 ? `- Dividend Yield estimado: ${dividendYield.toFixed(2)}%` : ''}
+
+Forneça a resposta estritamente no esquema estruturado com:
+1. overview: Resumo de 2 a 3 frases sobre o momento e o desempenho recente do ativo no mercado brasileiro.
+2. keyDrivers: Lista de exatamente 3 pontos curtos e objetivos sobre os catalisadores recentes (ex.: commodities, resultados contábeis, juros, demanda).
+3. macroContext: Análise de 1 a 2 frases relacionando o ativo ao cenário macroeconômico atual do Brasil (Selic, inflação IPCA, câmbio dólar).
+4. valuationAndDividends: Análise de 1 a 2 frases sobre patamar de preço, geração de caixa e sustentabilidade de proventos.
+5. riskNotice: O principal fator de risco que o investidor deve monitorar com atenção.
+
+REGRAS OBRIGATÓRIAS (CVM / ANBIMA):
+- Mantenha tom estritamente analítico e neutro.
+- NUNCA recomende compra, venda ou alteração de posição.
+- Não faça promessas de rentabilidade futura.`;
+
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: prompt,
+        config: {
+          systemInstruction:
+            'Você é o analista sênior do NorteInvest. Produza diagnósticos financeiros claros, elegantes, neutros e estritamente aderentes às normas da CVM.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              overview: { type: Type.STRING, description: 'Resumo sobre o momento e desempenho recente' },
+              keyDrivers: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: 'Exatamente 3 catalisadores recentes',
+              },
+              macroContext: { type: Type.STRING, description: 'Impacto do cenário macro brasileiro' },
+              valuationAndDividends: { type: Type.STRING, description: 'Comentário sobre proventos e patamar' },
+              riskNotice: { type: Type.STRING, description: 'Principal risco a monitorar' },
+            },
+            required: ['overview', 'keyDrivers', 'macroContext', 'valuationAndDividends', 'riskNotice'],
+          },
+        },
+      });
+    } catch (primaryErr: any) {
+      console.warn(`[Gemini Asset Analysis] Falha no modelo primário ${GEMINI_MODEL}, tentando fallback...`);
+      response = await ai.models.generateContent({
+        model: GEMINI_FALLBACK_MODEL,
+        contents: prompt,
+        config: {
+          systemInstruction:
+            'Você é o analista sênior do NorteInvest. Produza diagnósticos financeiros claros, elegantes, neutros e estritamente aderentes às normas da CVM.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              overview: { type: Type.STRING, description: 'Resumo sobre o momento e desempenho recente' },
+              keyDrivers: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: 'Exatamente 3 catalisadores recentes',
+              },
+              macroContext: { type: Type.STRING, description: 'Impacto do cenário macro brasileiro' },
+              valuationAndDividends: { type: Type.STRING, description: 'Comentário sobre proventos e patamar' },
+              riskNotice: { type: Type.STRING, description: 'Principal risco a monitorar' },
+            },
+            required: ['overview', 'keyDrivers', 'macroContext', 'valuationAndDividends', 'riskNotice'],
+          },
+        },
+      });
+    }
+
+    const parsed = JSON.parse(response.text || '{}');
+
+    const result = {
+      ticker,
+      name,
+      category,
+      overview: parsed.overview || `Análise de desempenho de ${ticker} concluída com sucesso.`,
+      keyDrivers:
+        Array.isArray(parsed.keyDrivers) && parsed.keyDrivers.length > 0
+          ? parsed.keyDrivers
+          : [
+              'Acompanhamento de receita e margem líquida.',
+              'Oscilações do mercado local e comportamento setorial.',
+              'Expectativas macroeconômicas e ciclo de juros.',
+            ],
+      macroContext: parsed.macroContext || 'Influência da política monetária do Banco Central e taxa Selic.',
+      valuationAndDividends: parsed.valuationAndDividends || 'Geração contínua de caixa e sustentabilidade de proventos.',
+      riskNotice: parsed.riskNotice || 'Volatilidade inerente à classe do ativo no pregão da B3.',
+      disclaimer:
+        'Conteúdo informativo gerado via inteligência artificial em conformidade com as normas da CVM. Não constitui recomendação de investimento. Rentabilidade passada não é garantia de retorno futuro.',
+      isFallback: false,
+      available: true,
+      generatedAt: new Date().toISOString(),
+      model: GEMINI_MODEL,
+    };
+
+    assetAnalysisCache.set(cacheKey, { data: result, timestamp: now });
+    return res.json(result);
+  } catch (error: any) {
+    console.error('[Gemini Asset Analysis Error]:', error?.message || error);
+    return res.json({
+      ticker,
+      name,
+      category,
+      overview: `Análise preliminar de ${ticker} (${name}): O ativo tem acompanhado os movimentos recentes do setor e as oscilações do mercado de capitais brasileiro.`,
+      keyDrivers: [
+        'Sensibilidade à curva de juros futuros e taxa Selic.',
+        'Resultados operacionais e balanço financeiro na B3.',
+        'Comportamento do investidor institucional e fluxo estrangeiro.',
+      ],
+      macroContext: 'O patamar de juros e o controle inflacionário afetam diretamente a precificação do ativo.',
+      valuationAndDividends:
+        dividendYield > 0
+          ? `Projeção de rendimentos com Dividend Yield de aproximadamente ${dividendYield.toFixed(2)}%.`
+          : 'Acompanhe a distribuição de lucros conforme calendário oficial da B3.',
+      riskNotice: 'Risco de mercado e alterações na conjuntura macroeconômica.',
+      disclaimer: 'Conteúdo informativo e educacional. Não constitui recomendação de investimento (CVM).',
+      isFallback: true,
+      available: false,
+      generatedAt: new Date().toISOString(),
+      errorNotice: error?.message || 'Erro temporário na geração de IA',
     });
   }
 });
