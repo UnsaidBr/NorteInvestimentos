@@ -178,7 +178,7 @@ export const PriceAlertModal: React.FC<PriceAlertModalProps> = ({
                 Alertas de Preço de Ativos
               </h3>
               <p className="text-xs font-mono text-[#8c8273]">
-                Monitore alvos de compra e venda com notificações instantâneas
+                Acompanhe os preços que você definiu, sem recomendação de investimento
               </p>
             </div>
           </div>
@@ -332,7 +332,7 @@ export const PriceAlertModal: React.FC<PriceAlertModalProps> = ({
                         Subir para ≥ Preço Alvo
                       </div>
                       <div className="text-[11px] text-[#8c8273] mt-0.5">
-                        Alvo de alta, resistência ou realização de lucro
+                        Avisar quando o preço subir até o valor que você escolheu
                       </div>
                     </div>
                   </button>
@@ -354,7 +354,7 @@ export const PriceAlertModal: React.FC<PriceAlertModalProps> = ({
                         Cair para ≤ Preço Alvo
                       </div>
                       <div className="text-[11px] text-[#8c8273] mt-0.5">
-                        Alvo de baixa, suporte ou oportunidade de aporte
+                        Avisar quando o preço cair até o valor que você escolheu
                       </div>
                     </div>
                   </button>
@@ -434,7 +434,7 @@ export const PriceAlertModal: React.FC<PriceAlertModalProps> = ({
                   maxLength={60}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="Ex: Rebalancear se atingir resistência; Comprar lote fracionário..."
+                  placeholder="Ex: Lembrar de revisar minha carteira quando chegar nesse preço"
                   className="w-full px-3 py-2 rounded-[8px] bg-[#1c1916] border border-[#d4af6a]/20 text-[#f5efe6] text-xs font-sans focus:border-[#d4af6a] focus:outline-none"
                 />
               </div>

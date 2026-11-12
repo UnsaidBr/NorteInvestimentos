@@ -746,11 +746,11 @@ export const StockDetailPage: React.FC = () => {
               <button
                 onClick={() =>
                   openWaitlistModal(
-                    `Alertas de preço por e-mail em tempo real para ${stockDetail.ticker}`
+                    `Alertas de preço por e-mail (em breve) para ${stockDetail.ticker}`
                   )
                 }
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-[#141210] border border-[#d4af6a]/30 text-[#f0d9a8] hover:bg-[#1c1916] transition-all cursor-pointer group"
-                title="Criar alerta de preço por e-mail (Recurso Premium)"
+                title="Alerta de preço por e-mail (em breve, Premium)"
               >
                 <Bell className="w-4 h-4 text-[#d4af6a] group-hover:scale-110 transition-transform" />
                 <span>Alerta</span>

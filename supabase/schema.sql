@@ -60,25 +60,17 @@ create table if not exists public.portfolio_goals (
   updated_at timestamptz not null default now()
 );
 
--- Políticas RLS para tabelas da carteira (acesso público anônimo permitido por padrão)
+-- SEGURANÇA: RLS ativada e SEM políticas públicas. Com a chave anon (navegador) ninguém lê nem escreve.
+-- Só o servidor (SERVICE_ROLE) acessa. Para sincronizar carteira por usuário no futuro, use Supabase Auth
+-- e políticas do tipo: using (auth.uid()::text = user_id) with check (auth.uid()::text = user_id).
 alter table public.portfolio_positions enable row level security;
 alter table public.portfolio_goals enable row level security;
 
-create policy "Permitir leitura pública das posições da carteira"
-  on public.portfolio_positions for select
-  using (true);
-
-create policy "Permitir escrita pública das posições da carteira"
-  on public.portfolio_positions for all
-  using (true);
-
-create policy "Permitir leitura pública das metas da carteira"
-  on public.portfolio_goals for select
-  using (true);
-
-create policy "Permitir escrita pública das metas da carteira"
-  on public.portfolio_goals for all
-  using (true);
+-- Remove políticas abertas de versões anteriores deste arquivo (seguro rodar de novo)
+drop policy if exists "Permitir leitura pública das posições da carteira" on public.portfolio_positions;
+drop policy if exists "Permitir escrita pública das posições da carteira" on public.portfolio_positions;
+drop policy if exists "Permitir leitura pública das metas da carteira" on public.portfolio_goals;
+drop policy if exists "Permitir escrita pública das metas da carteira" on public.portfolio_goals;
 
 -- ---------------------------------------------------------------------------
 -- Notificações de Resumo de Rebalanceamento via E-mail
@@ -100,13 +92,9 @@ create index if not exists idx_rebalance_notifications_created on public.rebalan
 
 alter table public.rebalance_notifications enable row level security;
 
-create policy "Permitir inserção de notificações de rebalanceamento"
-  on public.rebalance_notifications for insert
-  with check (true);
-
-create policy "Permitir leitura de notificações de rebalanceamento"
-  on public.rebalance_notifications for select
-  using (true);
+-- SEGURANÇA: contém e-mails. Sem políticas públicas; o servidor insere com SERVICE_ROLE.
+drop policy if exists "Permitir inserção de notificações de rebalanceamento" on public.rebalance_notifications;
+drop policy if exists "Permitir leitura de notificações de rebalanceamento" on public.rebalance_notifications;
 
 -- Habilitar publicação no canal Realtime do Supabase
 do $$

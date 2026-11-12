@@ -394,7 +394,7 @@ export const PlansPage: React.FC = () => {
                     <div className="w-4 h-4 rounded-full bg-[#d4af6a]/20 text-[#d4af6a] flex items-center justify-center shrink-0 mt-0.5">
                       <Check className="w-3 h-3" />
                     </div>
-                    <span><strong>Alertas por E-mail:</strong> avisos de preço e proventos em tempo real</span>
+                    <span><strong>Alertas por E-mail (em breve):</strong> avisos de preço e proventos</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <div className="w-4 h-4 rounded-full bg-[#d4af6a]/20 text-[#d4af6a] flex items-center justify-center shrink-0 mt-0.5">
