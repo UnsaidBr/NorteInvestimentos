@@ -10,8 +10,8 @@ export interface FundamentalStock {
   pvp: number; // Preço / Valor Patrimonial
   dy: number; // Dividend Yield nos últimos 12 meses (%)
   roe: number; // Return on Equity (%)
-  margemLiquida: number; // Margem Líquida (%)
-  dividaLiquidaEbitda: number; // Dívida Líquida / EBITDA
+  margemLiquida: number | null; // Margem Líquida (%) - null = não informado
+  dividaLiquidaEbitda: number | null; // Dívida Líquida / EBITDA - null = não informado
   lpa: number; // Lucro por Ação (R$)
   vpa: number; // Valor Patrimonial por Ação (R$)
   dpa12m: number; // Dividendos pagos por Ação em 12m (R$)

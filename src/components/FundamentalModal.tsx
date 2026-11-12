@@ -203,11 +203,11 @@ export const FundamentalModal: React.FC<FundamentalModalProps> = ({
             </div>
             <div className="p-3 rounded-[10px] bg-[#1c1916] border border-[#d4af6a]/15">
               <div className="text-[#8c8273]">Margem Líquida</div>
-              <div className="text-sm font-bold text-[#f5efe6] mt-0.5">{stock.margemLiquida}%</div>
+              <div className="text-sm font-bold text-[#f5efe6] mt-0.5">{stock.margemLiquida === null ? "n/d" : `${stock.margemLiquida}%`}</div>
             </div>
             <div className="p-3 rounded-[10px] bg-[#1c1916] border border-[#d4af6a]/15">
               <div className="text-[#8c8273]">Dív. Líq / EBITDA</div>
-              <div className="text-sm font-bold text-[#f5efe6] mt-0.5">{stock.dividaLiquidaEbitda}x</div>
+              <div className="text-sm font-bold text-[#f5efe6] mt-0.5">{stock.dividaLiquidaEbitda === null ? 'n/d' : `${stock.dividaLiquidaEbitda}x`}</div>
             </div>
             <div className="p-3 rounded-[10px] bg-[#1c1916] border border-[#d4af6a]/15">
               <div className="text-[#8c8273]">LPA (Lucro/ação)</div>

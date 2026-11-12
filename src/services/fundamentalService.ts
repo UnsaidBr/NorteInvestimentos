@@ -1,12 +1,32 @@
 import { FundamentalStock, FiiItem, ScreenerFilterState } from '../types/fundamental';
-import { getFundamentalStocks } from '../data/fundamentalData';
+import { getFundamentalStocks, FundamentalBase } from '../data/fundamentalData';
 import { FII_DATASET } from '../data/fiiData';
+
+export type ScreenerSource = 'live' | 'static';
+
+let liveCache: { stocks: FundamentalBase[]; updatedAt: string; fetchedAt: number } | null = null;
+const LIVE_CLIENT_CACHE_MS = 10 * 60 * 1000;
+
+async function loadLiveBase(): Promise<{ stocks: FundamentalBase[]; updatedAt: string } | null> {
+  if (liveCache && Date.now() - liveCache.fetchedAt < LIVE_CLIENT_CACHE_MS) return liveCache;
+  try {
+    const res = await fetch('/api/screener/fundamentals');
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data?.stocks) || data.stocks.length < 5) return null;
+    liveCache = { stocks: data.stocks, updatedAt: data.updatedAt, fetchedAt: Date.now() };
+    return liveCache;
+  } catch {
+    return null;
+  }
+}
 
 export async function getScreenerStocks(
   filters: ScreenerFilterState
-): Promise<{ stocks: FundamentalStock[]; totalCount: number }> {
-  // Obter lista base calculada com multiplicadores e yield parametrizados
-  let list = getFundamentalStocks(filters.grahamMultiplier, filters.bazinYieldReq);
+): Promise<{ stocks: FundamentalStock[]; totalCount: number; source: ScreenerSource; updatedAt?: string }> {
+  // Dados reais (brapi) quando disponíveis; senão, conjunto estático de referência (com aviso na tela)
+  const live = await loadLiveBase();
+  let list = getFundamentalStocks(filters.grahamMultiplier, filters.bazinYieldReq, live?.stocks);
 
   // Aplicar Presets consagrados
   if (filters.preset === 'graham') {
@@ -15,7 +35,7 @@ export async function getScreenerStocks(
     list.sort((a, b) => b.grahamMargin - a.grahamMargin);
   } else if (filters.preset === 'bazin') {
     // Bazin: DY >= bazinYieldReq, Preço Teto > Preço Atual, dívida controlada
-    list = list.filter((s) => s.dy >= filters.bazinYieldReq && s.bazinDiscount > 0 && s.dividaLiquidaEbitda <= 3.0);
+    list = list.filter((s) => s.dy >= filters.bazinYieldReq && s.bazinDiscount > 0 && s.dividaLiquidaEbitda !== null && s.dividaLiquidaEbitda <= 3.0);
     list.sort((a, b) => b.bazinDiscount - a.bazinDiscount);
   } else if (filters.preset === 'greenblatt') {
     // Fórmula Mágica: ordenada pelo ranking combinado Greenblatt
@@ -65,14 +85,19 @@ export async function getScreenerStocks(
   }
 
   if (filters.minMargem > 0) {
-    list = list.filter((s) => s.margemLiquida >= filters.minMargem);
+    list = list.filter((s) => s.margemLiquida !== null && s.margemLiquida >= filters.minMargem);
   }
 
   if (filters.minVolume > 0) {
     list = list.filter((s) => s.volume >= filters.minVolume);
   }
 
-  return { stocks: list, totalCount: list.length };
+  return {
+    stocks: list,
+    totalCount: list.length,
+    source: live ? 'live' : 'static',
+    updatedAt: live?.updatedAt,
+  };
 }
 
 export interface FiiOverviewMetrics {

@@ -402,12 +402,16 @@ export const BASE_FUNDAMENTAL_STOCKS: Array<Omit<FundamentalStock, 'grahamPrice'
 /**
  * Calcula métricas fundamentadas: Graham, Bazin, Greenblatt e Checklist
  */
+export type FundamentalBase = Omit<FundamentalStock, 'grahamPrice' | 'grahamMargin' | 'bazinPrice' | 'bazinDiscount' | 'greenblattRank' | 'scoreSaude' | 'pontosPositivos' | 'pontosAtencao'>;
+
 export function calculateFundamentals(
-  stock: (typeof BASE_FUNDAMENTAL_STOCKS)[0],
+  stock: FundamentalBase,
   grahamMultiplier = 22.5,
   bazinYieldReq = 6.0
 ): FundamentalStock {
-  const { price, lpa, vpa, dpa12m, pl, pvp, dy, roe, margemLiquida, dividaLiquidaEbitda } = stock;
+  const { price, lpa, vpa, dpa12m, pl, pvp, dy, roe } = stock;
+  const margemLiquida = stock.margemLiquida;
+  const dividaLiquidaEbitda = stock.dividaLiquidaEbitda;
 
   // 1. Graham: Preço Justo = sqrt(multiplicador * LPA * VPA)
   let grahamPrice = 0;
@@ -440,14 +444,14 @@ export function calculateFundamentals(
 
   if (pvp > 0 && pvp <= 1.5) pontosPositivos.push(`P/VP comedido de ${pvp}x (próximo ou abaixo do patrimônio líquido)`);
 
-  if (dividaLiquidaEbitda > 0 && dividaLiquidaEbitda <= 2.0) {
+  if (dividaLiquidaEbitda !== null && dividaLiquidaEbitda > 0 && dividaLiquidaEbitda <= 2.0) {
     pontosPositivos.push(`Endividamento controlado com Dívida Líq./EBITDA de ${dividaLiquidaEbitda}x`);
-  } else if (dividaLiquidaEbitda > 3.0) {
+  } else if (dividaLiquidaEbitda !== null && dividaLiquidaEbitda > 3.0) {
     pontosAtencao.push(`Alavancagem requer atenção: Dívida Líq./EBITDA de ${dividaLiquidaEbitda}x`);
   }
 
-  if (margemLiquida >= 15) pontosPositivos.push(`Margem líquida expressiva de ${margemLiquida}%`);
-  else if (margemLiquida < 5) pontosAtencao.push(`Margem líquida apertada de ${margemLiquida}%`);
+  if (margemLiquida !== null && margemLiquida >= 15) pontosPositivos.push(`Margem líquida expressiva de ${margemLiquida}%`);
+  else if (margemLiquida !== null && margemLiquida < 5) pontosAtencao.push(`Margem líquida apertada de ${margemLiquida}%`);
 
   // Score de Saúde (0 a 10)
   let score = 5;
@@ -455,10 +459,10 @@ export function calculateFundamentals(
   if (dy >= 6) score += 1.0;
   if (pl > 0 && pl <= 12) score += 1.0;
   if (pvp > 0 && pvp <= 2.0) score += 0.5;
-  if (dividaLiquidaEbitda <= 2.5) score += 1.0;
-  if (margemLiquida >= 10) score += 1.0;
+  if (dividaLiquidaEbitda !== null && dividaLiquidaEbitda <= 2.5) score += 1.0;
+  if (margemLiquida !== null && margemLiquida >= 10) score += 1.0;
   if (pl > 25) score -= 1.0;
-  if (dividaLiquidaEbitda > 3.5) score -= 1.5;
+  if (dividaLiquidaEbitda !== null && dividaLiquidaEbitda > 3.5) score -= 1.5;
   const scoreSaude = Math.min(10, Math.max(1, parseFloat(score.toFixed(1))));
 
   return {
@@ -476,8 +480,12 @@ export function calculateFundamentals(
 /**
  * Calcula lista consolidada com ordenações e ranqueamento Greenblatt
  */
-export function getFundamentalStocks(grahamMultiplier = 22.5, bazinYieldReq = 6.0): FundamentalStock[] {
-  const list = BASE_FUNDAMENTAL_STOCKS.map((s) => calculateFundamentals(s, grahamMultiplier, bazinYieldReq));
+export function getFundamentalStocks(
+  grahamMultiplier = 22.5,
+  bazinYieldReq = 6.0,
+  base: FundamentalBase[] = BASE_FUNDAMENTAL_STOCKS
+): FundamentalStock[] {
+  const list = base.map((s) => calculateFundamentals(s, grahamMultiplier, bazinYieldReq));
 
   // Cálculo da Fórmula Mágica de Joel Greenblatt:
   // Rank 1: Menor P/L (excluindo P/L negativo)

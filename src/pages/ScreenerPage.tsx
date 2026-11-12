@@ -70,12 +70,16 @@ export const ScreenerPage: React.FC = () => {
 
   const [stocksList, setStocksList] = useState<FundamentalStock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataSource, setDataSource] = useState<'live' | 'static'>('static');
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<string | undefined>();
 
   // Carregar dados quando filtros mudarem
   useEffect(() => {
     setLoading(true);
-    getScreenerStocks(filters).then(({ stocks }) => {
+    getScreenerStocks(filters).then(({ stocks, source, updatedAt }) => {
       setStocksList(stocks);
+      setDataSource(source);
+      setDataUpdatedAt(updatedAt);
       setLoading(false);
     });
   }, [filters]);
@@ -105,8 +109,11 @@ export const ScreenerPage: React.FC = () => {
         return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
       }
 
-      valA = Number(valA || 0);
-      valB = Number(valB || 0);
+      // Valores não informados (n/d) vão sempre para o fim da lista
+      if (valA === null || valA === undefined) return valB === null || valB === undefined ? 0 : 1;
+      if (valB === null || valB === undefined) return -1;
+      valA = Number(valA);
+      valB = Number(valB);
       return sortDirection === 'asc' ? valA - valB : valB - valA;
     });
 
@@ -159,7 +166,19 @@ export const ScreenerPage: React.FC = () => {
           <span>Ir para Painel de FIIs →</span>
         </Link>
       </PageHeader>
-      <StaticReferenceNotice what="O Rastreador (incluindo as fórmulas de Graham, Bazin e Greenblatt)" />
+      {dataSource === 'static' ? (
+        <StaticReferenceNotice what="O Rastreador (incluindo as fórmulas de Graham, Bazin e Greenblatt)" />
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <p className="text-[11px] font-mono text-[#8c8273]">
+            Indicadores obtidos via brapi.dev
+            {dataUpdatedAt
+              ? `, atualizados em ${new Date(dataUpdatedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`
+              : ''}
+            . Atualização a cada ~1 hora, pode haver defasagem. Dívida/EBITDA e margem aparecem como “n/d” quando a fonte não informa. Conteúdo educacional, sem recomendação de investimento.
+          </p>
+        </div>
+      )}
 
       <div className="py-12 sm:py-16 bg-[#0b0a09]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -526,7 +545,7 @@ export const ScreenerPage: React.FC = () => {
 
                           {/* Margem */}
                           <td className="py-3 px-3 text-right tabular-nums text-[#c2b9ac]">
-                            {stock.margemLiquida}%
+                            {stock.margemLiquida === null ? "n/d" : `${stock.margemLiquida}%`}
                           </td>
 
                           {/* Graham */}

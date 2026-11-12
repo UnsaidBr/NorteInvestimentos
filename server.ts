@@ -1,3 +1,4 @@
+import { mapBrapiStock, LiveFundamentalBase } from './server/brapiMapper.ts';
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -1284,6 +1285,80 @@ app.get('/api/market/history/:ticker', async (req: Request, res: Response) => {
     };
     historyCache.set(cacheKey, { data: failureData, timestamp: now });
     return res.json(failureData);
+  }
+});
+
+// Endpoint: Fundamentos reais do Rastreador (brapi.dev), com cache de 1h
+const SCREENER_CACHE_MS = 60 * 60 * 1000;
+let screenerCache: { data: { stocks: LiveFundamentalBase[]; updatedAt: string }; timestamp: number } | null = null;
+let screenerInflight: Promise<LiveFundamentalBase[]> | null = null;
+
+async function loadScreenerUniverse(brapiToken: string): Promise<LiveFundamentalBase[]> {
+  const tokenQuery = brapiToken ? `&token=${brapiToken}` : '';
+  const tickers = new Set<string>(['PETR4', 'VALE3', 'ITUB4', 'BBDC4', 'BBAS3', 'WEGE3', 'ABEV3', 'B3SA3', 'RENT3', 'SUZB3']);
+  try {
+    const listRes = await fetchWithTimeout(
+      `https://brapi.dev/api/quote/list?type=stock&limit=60&sortBy=volume&sortOrder=desc${tokenQuery}`,
+      {},
+      8000
+    );
+    if (listRes.ok) {
+      const listData: any = await listRes.json();
+      (listData.stocks || []).forEach((s: any) => {
+        if (typeof s?.stock === 'string' && /^[A-Z]{4}\d{1,2}$/.test(s.stock)) tickers.add(s.stock);
+      });
+    }
+  } catch {
+    // segue só com a lista base
+  }
+
+  const all = Array.from(tickers);
+  const out: LiveFundamentalBase[] = [];
+  const fetchBatch = async (batch: string[]) => {
+    const url = `https://brapi.dev/api/quote/${batch.join(',')}?dividends=true&modules=summaryProfile,defaultKeyStatistics,financialData${tokenQuery}`;
+    try {
+      const r = await fetchWithTimeout(url, {}, 12000);
+      if (!r.ok) return false;
+      const j: any = await r.json();
+      (j.results || []).forEach((item: any) => {
+        const m = mapBrapiStock(item);
+        if (m) out.push(m);
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  for (let i = 0; i < all.length; i += 10) {
+    const batch = all.slice(i, i + 10);
+    const ok = await fetchBatch(batch);
+    // Se o lote falhar (ex.: limite do plano), tenta um a um
+    if (!ok) for (const t of batch) await fetchBatch([t]);
+  }
+  return out;
+}
+
+app.get('/api/screener/fundamentals', async (_req: Request, res: Response) => {
+  const now = Date.now();
+  if (screenerCache && now - screenerCache.timestamp < SCREENER_CACHE_MS) {
+    return res.json({ ...screenerCache.data, source: 'brapi', cached: true });
+  }
+  try {
+    if (!screenerInflight) {
+      screenerInflight = loadScreenerUniverse(process.env.BRAPI_TOKEN || '').finally(() => {
+        screenerInflight = null;
+      });
+    }
+    const stocks = await screenerInflight;
+    if (stocks.length === 0) {
+      if (screenerCache) return res.json({ ...screenerCache.data, source: 'brapi', cached: true, stale: true });
+      return res.status(503).json({ error: 'Dados de mercado indisponíveis no momento.' });
+    }
+    screenerCache = { data: { stocks, updatedAt: new Date().toISOString() }, timestamp: now };
+    return res.json({ ...screenerCache.data, source: 'brapi', cached: false });
+  } catch {
+    if (screenerCache) return res.json({ ...screenerCache.data, source: 'brapi', cached: true, stale: true });
+    return res.status(503).json({ error: 'Dados de mercado indisponíveis no momento.' });
   }
 });
 
